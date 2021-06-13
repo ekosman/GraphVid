@@ -60,7 +60,7 @@ def get_attr_for_segment(frame, segments, segment_id, method='mean_color'):
     if method == 'mean_color':
         return colors.mean(axis=0)
     if method == 'mean_coordinates':
-        return np.mean(pixel_idxs[0]), np.mean(pixel_idxs[1])
+        return np.mean(pixel_idxs[0]) / frame.shape[0], np.mean(pixel_idxs[1]) / frame.shape[1]
     else:
         raise NotImplementedError
 
@@ -109,7 +109,7 @@ def create_superpixels_flow_graph(clip):
         parent_graph = nx.compose(parent_graph, child_graph)
 
         if i_frame != 0:
-            feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=0.5)
+            feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=4000)
             nearest_neighbors = np.argmin(feature_distances, axis=1)
             dists = feature_distances[list(range(feature_distances.shape[0])), nearest_neighbors]
             mean_ = np.mean(dists)
