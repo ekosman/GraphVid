@@ -1,4 +1,5 @@
 import itertools
+import time
 from os import path
 from skimage.segmentation import slic
 import matplotlib.pyplot as plt
@@ -24,29 +25,43 @@ def draw_frame(frame, segments):
 
 if __name__ == '__main__':
     # img = astronaut()
-
-    cap = cv2.VideoCapture(path.join(r'F:\Downloads', r'yt1s.com - Canon Rock Jerry C cover by Laura.mp4'))
+    clip_length = 16
+    cap = cv2.VideoCapture(path.join(r'/media/eitank/disk2T/Datasets/kinetics-downloader/dataset/train/arranging_flowers/0a8l_Pou_C8.mp4'))
 
     # Read until video is completed
-    while (cap.isOpened()):
+    clip = []
+    while cap.isOpened():
         # Capture frame-by-frame
         ret, frame = cap.read()
-        frame = cv2.resize(frame, fx=0.4, fy=0.4, dsize=None)
+        frame = cv2.resize(frame, fx=0.5, fy=0.5, dsize=None)
 
-        if ret:
-            # Display the resulting frame
-            segments = slic(frame, n_segments=1500, compactness=10)
-            res = draw_frame(frame, segments)
+        # Display the resulting frame
 
-            cv2.imshow('Frame', res)
+        clip.append(frame)
+
+        if len(clip) == clip_length:
+            continue
+
+        clip = np.stack(clip)
+        segments = slic(clip, n_segments=600, compactness=10)
+
+        idxs = np.unique(segments)
+        for idx in idxs:
+            pixel_idxs = np.where(segments == idx)
+            colors = clip[pixel_idxs]
+            avg_color = colors.mean(axis=0)
+            clip[pixel_idxs] = avg_color
+
+        # res = draw_frame(frame, segments)
+        for frame in clip:
+            # time.sleep(0.5)
+            cv2.imshow('Frame', frame)
 
             # Press Q on keyboard to  exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-        # Break the loop
-        else:
-            break
+        clip = []
 
     # When everything done, release the video capture object
     cap.release()

@@ -9,12 +9,11 @@ def download_video(video_link, target_dir):
     url_data = urllib.parse.urlparse(video_link)
     query = urllib.parse.parse_qs(url_data.query)
     id = query["v"][0]
-    file_name = path.join(target_dir, f"{id}.mp4")
+    file_name_mp4 = path.join(target_dir, f"{id}.mp4")
+    file_name_mkv = path.join(target_dir, f"{id}.mkv")
 
-    # return_code = subprocess.call(
-    #     ["youtube-dl", "https://youtube.com/watch?v={}".format(id), "--quiet", "-f",
-    #      "bestvideo[ext={}]+bestaudio/best".format("mp4"), "--output", file_name, "--no-continue"],
-    #     stderr=subprocess.DEVNULL)
+    if path.exists(file_name_mp4) or path.exists(file_name_mkv):
+        return
 
     def my_hook(d):
         if d['status'] == 'finished':
@@ -34,8 +33,6 @@ def download_video(video_link, target_dir):
     except Exception as e:
         pass
 
-    return file_name
-
 
 if __name__ == '__main__':
     parser = ArgumentParser(description="Script to double check video content.")
@@ -53,6 +50,6 @@ if __name__ == '__main__':
     for line in file_lines:
         line = line.split(' ')
         link = line[0]
-        anns = line[1:]
-        anns = [idx_2_labels[int(idx)] for idx in anns]
+        anns = line[1]
+        anns = [idx_2_labels[int(idx)] for idx in anns.split(',')]
         download_video(link, args.target_dir)
