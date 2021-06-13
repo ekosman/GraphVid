@@ -1,7 +1,7 @@
 import cProfile
 import sys
 from os import path
-
+import matplotlib.pyplot as plt
 import cv2
 import networkx as nx
 import numpy as np
@@ -115,10 +115,10 @@ def create_superpixels_flow_graph(clip):
             mean_ = np.mean(dists)
             std = np.std(dists)
             nearest_neighbors = nearest_neighbors[dists < mean_ + std]
-            # plt.figure()
-            # plt.hist(dists, bins=100)
-            # plt.axvline(mean_+std, color='r')
-            # plt.show()
+            plt.figure()
+            plt.hist(dists, bins=100)
+            plt.axvline(mean_+std, color='r')
+            plt.show()
             for source, neighbor in enumerate(nearest_neighbors):
                 parent_graph.add_edge(f"level_{i_frame - 1}_segment_{source}",
                                       f"level_{i_frame}_segment_{nearest_neighbors}")
