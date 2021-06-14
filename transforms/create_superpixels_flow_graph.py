@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import cv2
 import networkx as nx
 import numpy as np
+import torch
 from networkx import DiGraph
 from scipy.spatial.distance import cdist
 from skimage import color
@@ -78,13 +79,13 @@ def get_distances(sources, targets, alpha):
     return features_distances + alpha * coordinates_distances
 
 
-def create_superpixels_flow_graph(clip):
+def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
     last_layer_nodes = None
     parent_graph = DiGraph()
 
     for i_frame, frame in enumerate(clip):
         child_graph = DiGraph()
-        segments = slic(frame, n_segments=200, compactness=10, start_label=0)
+        segments = slic(frame, n_segments=n_segments, compactness=compactness, start_label=0)
         adjacents = get_adjacents(segments)
         idxs = np.unique(segments)
         idxs.sort()
@@ -115,10 +116,10 @@ def create_superpixels_flow_graph(clip):
             mean_ = np.mean(dists)
             std = np.std(dists)
             nearest_neighbors = nearest_neighbors[dists < mean_ + std]
-            plt.figure()
-            plt.hist(dists, bins=100)
-            plt.axvline(mean_+std, color='r')
-            plt.show()
+            # plt.figure()
+            # plt.hist(dists, bins=100)
+            # plt.axvline(mean_+std, color='r')
+            # plt.show()
             for source, neighbor in enumerate(nearest_neighbors):
                 parent_graph.add_edge(f"level_{i_frame - 1}_segment_{source}",
                                       f"level_{i_frame}_segment_{nearest_neighbors}")
@@ -126,6 +127,16 @@ def create_superpixels_flow_graph(clip):
         last_layer_nodes = current_layer_nodes
 
     return parent_graph
+
+
+class VideoClipToSuperPixelFlowGraph:
+    def __init__(self, n_segments=200, compactness=10):
+        self.n_segments = n_segments
+        self.compactness = compactness
+
+    def __call__(self, clip):
+        clip = torch.transpose(clip, dim0=1, dim1=2)
+        return create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
 
 
 if __name__ == '__main__':

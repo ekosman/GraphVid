@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 
 from loaders.kinetics_loader import Kinetics
+from network.model_utils import get_model
 from utils.PackageUtils.ArgparseUtils import update_args, log_args_description
 from utils.PackageUtils.DateUtils import get_time_str
 from utils.PackageUtils.FileUtils import load_json
@@ -41,10 +42,7 @@ def train_video_recognition(
 ):
     train_loader = Kinetics(
         dataset_path=args.dataset_path_train,
-        video_transform=build_transforms(args.video_height, args.video_width),
-        signals_transforms=None,
-        return_video=args.video_weight != 0,
-        split_type='train',
+        video_transform=build_transforms(),
         video_clips=args.video_clips_train,
         **vars(args),
     )
@@ -57,17 +55,27 @@ def train_video_recognition(
 
     eval_loader = Kinetics(
         dataset_path=args.dataset_path_validation,
-        video_transform=build_transforms(args.video_height, args.video_width),
-        signals_transforms=None,
-        return_video=args.video_weight != 0,
-        split_type='validation',
+        video_transform=build_transforms(),
         video_clips=args.video_clips_validation,
         **vars(args),
     )
 
     eval_iter = torch.utils.data.DataLoader(eval_loader,
                                             batch_size=args.batch_size,
-                                            shuffle=True,
+                                            shuffle=False,
+                                            num_workers=8,
+                                            pin_memory=True)
+
+    test_loader = Kinetics(
+        dataset_path=args.dataset_path_test,
+        video_transform=build_transforms(),
+        video_clips=args.video_clips_test,
+        **vars(args),
+    )
+
+    test_iter = torch.utils.data.DataLoader(test_loader,
+                                            batch_size=args.batch_size,
+                                            shuffle=False,
                                             num_workers=8,
                                             pin_memory=True)
 
@@ -86,10 +94,6 @@ def train_video_recognition(
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     tb_writer = SummaryWriter(log_dir=output_dirs.tensorboard_dir)
 
-    timestamp_names = list(range(args.future_steps,
-                                 args.future_steps + args.prediction_length * args.prediction_stride,
-                                 args.prediction_stride))
-
     losses_names = ['total']
 
     model.register_callback(TensorBoardCallback(tb_writer=tb_writer,
@@ -103,7 +107,7 @@ def train_video_recognition(
         model.fit(
             train_iter=train_iter,
             eval_iter=eval_iter,
-            test_iter=eval_iter,
+            test_iter=test_iter,
             criterion=criterion,
             optimizer=optimizer,
             epochs=args.epochs,
@@ -155,10 +159,9 @@ def get_args():
     parser.add_argument('--epochs', type=int, default=1000, help="number of epochs for training")
     parser.add_argument('--batch_size', type=int, default=50, help="batch size for training")
     parser.add_argument('--device', type=str, default='cuda', help="device to use for inference of torch models")
-    parser.add_argument('--dataset', type=str, default='comma', help="which loader to use", choices=['comma', 'udacity'])
+    parser.add_argument('--dataset', type=str, default='comma', help="which loader to use",
+                        choices=['comma', 'udacity'])
     parser.add_argument('--learning_rate', type=float, default=1e-3, help="learning rate for the optimizer")
-    parser.add_argument('--flip_prob', type=float, default=0.5,
-                        help="probability of applying augmentation on the horizontal axis")
     parser.add_argument('--show_errors',
                         default=False,
                         action='store_true',
@@ -194,7 +197,7 @@ if __name__ == "__main__":
     ]
     clearml_logger = None if args.disable_clearml_logger \
         else get_clearml_logger(project_name="GraphVid",
-                               task_name=get_time_str(),
+                                task_name=get_time_str(),
                                 tags=tags)
 
     logging.info(f"Using device {args.device}")
