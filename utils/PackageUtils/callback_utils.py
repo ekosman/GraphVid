@@ -115,24 +115,26 @@ class DefaultModelCallback(Callback):
     def on_evaluation_end(self):
         pass
 
-    def on_training_iteration_end(self, train_loss, val_loss):
+    def on_training_iteration_end(self, train_loss, val_loss, test_loss):
         train_loss_string = "   ".join(
             [f"{loss_name} train loss: {loss_value}" for loss_name, loss_value in zip(self.loss_names, train_loss)])
-        if val_loss:
-            val_loss_string = "   ".join(
-                [f"{loss_name} validation loss: {loss_value}" for loss_name, loss_value in zip(self.loss_names, val_loss)])
-            logging.info(f"""
-============================================================================================================================
-Epoch {self.epoch}/{self.epochs}     {train_loss_string}     {val_loss_string}        time: {datetime.timedelta(seconds=time.time() - self.start_time)}
-============================================================================================================================
-""")
 
-        else:
-            logging.info(f"""
-============================================================================================================================
-Epoch {self.epoch}/{self.epochs}     {train_loss_string}        time: {datetime.timedelta(seconds=time.time() - self.start_time)}
-============================================================================================================================
-""")
+        val_loss_string = ""
+        if val_loss:
+            val_loss_string = "     " + "   ".join(
+                [f"{loss_name} validation loss: {loss_value}" for loss_name, loss_value in zip(self.loss_names, val_loss)])
+
+        test_loss_string = ""
+        if test_loss:
+            test_loss_string = "     " + "   ".join(
+                [f"{loss_name} validation loss: {loss_value}" for loss_name, loss_value in
+                 zip(self.loss_names, test_loss)])
+
+        logging.info(f"""
+        ============================================================================================================================
+        Epoch {self.epoch}/{self.epochs}     {train_loss_string}{val_loss_string}{test_loss_string}        time: {datetime.timedelta(seconds=time.time() - self.start_time)}
+        ============================================================================================================================
+        """)
 
 
 class TensorBoardCallback(Callback):
@@ -175,7 +177,7 @@ class TensorBoardCallback(Callback):
     def on_evaluation_end(self):
         pass
 
-    def on_training_iteration_end(self, train_loss, val_loss):
+    def on_training_iteration_end(self, train_loss, val_loss, test_loss):
         if train_loss is not None:
             self.tb_writer.add_scalars("Epoch loss",
                                        {f"{loss_name} (train)": loss_value for loss_name, loss_value in zip(self.loss_names, train_loss)},
@@ -184,4 +186,9 @@ class TensorBoardCallback(Callback):
         if val_loss is not None:
             self.tb_writer.add_scalars("Epoch loss",
                                        {f"{loss_name} (validation)": loss_value for loss_name, loss_value in zip(self.loss_names, val_loss)},
+                                       self.epoch)
+
+        if test_loss is not None:
+            self.tb_writer.add_scalars("Epoch loss",
+                                       {f"{loss_name} (test)": loss_value for loss_name, loss_value in zip(self.loss_names, test_loss)},
                                        self.epoch)

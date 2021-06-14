@@ -117,13 +117,15 @@ class TorchModel(nn.Module):
                 method = getattr(callback, notification)
                 method(*args, **kwargs)
             except (AttributeError, TypeError) as e:
-                logging.error(f"callback {callback.__class__.__name__} doesn't fully implement the required interface {e}")
+                logging.error(
+                    f"callback {callback.__class__.__name__} doesn't fully implement the required interface {e}")
 
     def fit(self,
             train_iter,
             criterion,
             optimizer,
             eval_iter=None,
+            test_iter=None,
             epochs=10,
             network_model_path_base=None,
             save_every=None,
@@ -136,6 +138,7 @@ class TorchModel(nn.Module):
             criterion: loss function
             optimizer: optimizer for the algorithm
             eval_iter: iterator for evaluation
+            test_iter: iterator for testing
             epochs: amount of epochs
             network_model_path_base: where to save the models
             save_every: saving model checkpoints every specified amount of epochs
@@ -155,7 +158,7 @@ class TorchModel(nn.Module):
                                        optimizer=optimizer,
                                        data_iter=train_iter,
                                        epoch=epoch,
-                                       batch_splitter=batch_splitter,)
+                                       batch_splitter=batch_splitter, )
 
             if save_every and network_model_path_base and epoch % save_every == 0:
                 logging.info(f"Save the model after epoch {epoch}")
@@ -168,7 +171,14 @@ class TorchModel(nn.Module):
                                          data_iter=eval_iter,
                                          batch_splitter=batch_splitter, )
 
-            self.notify_callbacks('on_training_iteration_end', train_loss, val_loss)
+            test_loss = None
+            if test_iter and evaluate_every and epoch % evaluate_every == 0:
+                logging.info(f"Testing after epoch {epoch}")
+                test_loss = self.evaluate(criterion=criterion,
+                                          data_iter=test_iter,
+                                          batch_splitter=batch_splitter, )
+
+            self.notify_callbacks('on_training_iteration_end', train_loss, val_loss, test_loss)
 
         self.notify_callbacks('on_training_end', self.model)
         # Save the last model anyway...
