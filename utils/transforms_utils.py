@@ -1,7 +1,7 @@
 from torchvision.transforms import transforms
 
 from transforms import transforms_video
-from transforms.create_superpixels_flow_graph import VideoClipToSuperPixelFlowGraph
+from transforms.create_superpixels_flow_graph import VideoClipToSuperPixelFlowGraph, NetworkxToGeometric
 from transforms.transforms_video import RandomResizedCropVideo
 
 
@@ -18,6 +18,7 @@ def build_transforms():
         # transforms_video.NormalizeVideo(mean=mean, std=std)
         RandomResizedCropVideo(size=(480, 640),),
         VideoClipToSuperPixelFlowGraph(),
+        NetworkxToGeometric(),
     ])
 
     return res

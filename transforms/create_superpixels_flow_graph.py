@@ -142,6 +142,11 @@ class VideoClipToSuperPixelFlowGraph:
         return create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
 
 
+class NetworkxToGeometric:
+    def __call__(self, g):
+        return from_networkx(g)
+
+
 if __name__ == '__main__':
     clip_length = 16
     cap = cv2.VideoCapture(path.join(r'/media/eitank/disk2T/Datasets/kinetics-downloader/dataset/train/arranging_flowers/0a8l_Pou_C8.mp4'))
