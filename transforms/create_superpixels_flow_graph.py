@@ -1,7 +1,7 @@
 import cProfile
 import sys
 from os import path
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import cv2
 import networkx as nx
 import numpy as np
@@ -59,7 +59,7 @@ def get_attr_for_segment(frame, segments, segment_id, method='mean_color'):
     colors = frame[pixel_idxs]
 
     if method == 'mean_color':
-        return colors.mean(axis=0)
+        return (colors * 1.0).mean(axis=0)
     if method == 'mean_coordinates':
         return np.mean(pixel_idxs[0]) / frame.shape[0], np.mean(pixel_idxs[1]) / frame.shape[1]
     else:
@@ -88,7 +88,7 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
         segments = slic(frame, n_segments=n_segments, compactness=compactness, start_label=0)
         adjacents = get_adjacents(segments)
         idxs = np.unique(segments)
-        idxs.sort()
+        # idxs.sort()
         node_attrs = {idx:  get_attr_for_segment(frame, segments, idx, method='mean_color') for idx in idxs}
         node_coordinates = {idx:  get_attr_for_segment(frame, segments, idx, method='mean_coordinates') for idx in idxs}
         current_layer_nodes = [(node_attrs[idx], node_coordinates[idx]) for idx in idxs]
@@ -105,7 +105,10 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
                 if not child_graph.has_node(adjacent_name):
                     child_graph.add_node(adjacent_name, x=np.concatenate([node_attrs[adjacent], node_coordinates[adjacent]]))
 
-                child_graph.add_edge(node_name, adjacent_name)
+                if not child_graph.has_edge(node_name, adjacent_name):
+                    child_graph.add_edge(node_name, adjacent_name)
+                if not child_graph.has_edge(adjacent_name, node_name):
+                    child_graph.add_edge(adjacent_name, node_name)
 
         parent_graph = nx.compose(parent_graph, child_graph)
 

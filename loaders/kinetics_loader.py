@@ -1,7 +1,9 @@
+import torch
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.folder import make_dataset
 from torchvision.datasets.utils import list_dir
 from torchvision.datasets.video_utils import VideoClips
+from os import path
 
 
 class Kinetics(VisionDataset):
@@ -38,17 +40,22 @@ class Kinetics(VisionDataset):
             - label (int): class of the video clip
     """
 
-    def __init__(self, root, frames_per_clip, step_between_clips=1, frame_rate=None,
-                 extensions=('avi',), transform=None, _precomputed_metadata=None,
-                 num_workers=1, _video_width=0, _video_height=0,
-                 _video_min_dimension=0, _audio_samples=0, _audio_channels=0):
-        super(Kinetics, self).__init__(root)
+    def __init__(self, dataset_path, frames_per_clip=16, step_between_clips=1, frame_rate=None,
+                 extensions=('avi', 'mp4', 'mkv'), transform=None, _precomputed_metadata=None,
+                 num_workers=8, _video_width=0, _video_height=0,
+                 _video_min_dimension=0, _audio_samples=0, _audio_channels=0, **kwargs):
+        super(Kinetics, self).__init__(dataset_path)
 
-        classes = list(sorted(list_dir(root)))
+        classes = list(sorted(list_dir(dataset_path)))
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         self.samples = make_dataset(self.root, class_to_idx, extensions, is_valid_file=None)
         self.classes = classes
         video_list = [x[0] for x in self.samples]
+        precomputed_metadata_path = path.join(dataset_path, 'metadata.pt')
+        flag_metadata_exists = False
+        if path.exists(precomputed_metadata_path):
+            _precomputed_metadata = torch.load(precomputed_metadata_path)
+            flag_metadata_exists = True
         self.video_clips = VideoClips(
             video_list,
             frames_per_clip,
@@ -64,6 +71,15 @@ class Kinetics(VisionDataset):
         )
         self.transform = transform
 
+        if not flag_metadata_exists:
+            torch.save(self.video_clips.metadata, precomputed_metadata_path)
+
+        self.cached_graphs = [None] * len(self)
+
+    @property
+    def num_classes(self):
+        return len(self.classes)
+
     @property
     def metadata(self):
         return self.video_clips.metadata
@@ -72,10 +88,16 @@ class Kinetics(VisionDataset):
         return self.video_clips.num_clips()
 
     def __getitem__(self, idx):
+        if self.cached_graphs[idx] is not None:
+            return self.cached_graphs[idx]
+
         video, audio, info, video_idx = self.video_clips.get_clip(idx)
+        video = video * 1.0
         label = self.samples[video_idx][1]
 
         if self.transform is not None:
             video = self.transform(video)
 
-        return video, audio, label
+        self.cached_graphs[idx] = video, label
+
+        return video, label

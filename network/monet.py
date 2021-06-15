@@ -61,13 +61,13 @@ def reset(nn):
 
 
 class MoNet(torch.nn.Module):
-    def __init__(self, kernel_size):
+    def __init__(self, kernel_size, num_classes=10):
         super(MoNet, self).__init__()
         self.conv1 = GMMConv(1, 32, dim=2, kernel_size=kernel_size)
         self.conv2 = GMMConv(32, 64, dim=2, kernel_size=kernel_size)
         self.conv3 = GMMConv(64, 64, dim=2, kernel_size=kernel_size)
         self.fc1 = torch.nn.Linear(64, 128)
-        self.fc2 = torch.nn.Linear(128, 10)
+        self.fc2 = torch.nn.Linear(128, num_classes)
 
     def forward(self, data):
         data = data.clone()

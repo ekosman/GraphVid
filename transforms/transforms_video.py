@@ -49,14 +49,10 @@ class RandomResizedCropVideo(RandomResizedCrop):
     def __init__(
         self,
         size,
-        crop,
+        crop=None,
         interpolation_mode="bilinear",
     ):
-        if isinstance(size, tuple):
-            assert len(size) == 2, "size should be tuple (height, width)"
-            self.size = size
-        else:
-            self.size = (size, size)
+        self.size = size
 
         self.interpolation_mode = interpolation_mode
         self.crop = crop
@@ -69,17 +65,23 @@ class RandomResizedCropVideo(RandomResizedCrop):
             torch.tensor: randomly cropped/resized video clip.
                 size is (C, T, H, W)
         """
+        channel_last = clip.shape[-1] == 3
+        if channel_last:
+            clip = clip.permute(0, -1, 1, 2)  # T, C, H, W
         clip = F.resize(clip, self.size, self.interpolation_mode)
-        # print(clip.shape)
-        if clip.shape[2] - self.crop > 0:
-            i = np.random.randint(clip.shape[2] - self.crop)
-        else:
-            i = 0
-        if clip.shape[3] - self.crop > 0:
-            j = np.random.randint(clip.shape[3] - self.crop)
-        else:
-            j = 0
-        clip = clip[..., i:i+self.crop, j:j+self.crop]
+        if self.crop is not None:
+            if clip.shape[2] - self.crop > 0:
+                i = np.random.randint(clip.shape[2] - self.crop)
+            else:
+                i = 0
+            if clip.shape[3] - self.crop > 0:
+                j = np.random.randint(clip.shape[3] - self.crop)
+            else:
+                j = 0
+            clip = clip[..., i:i+self.crop, j:j+self.crop]
+
+        if channel_last:
+            clip = clip.permute(0, 2, 3, 1)
         return clip
 
     def __repr__(self):

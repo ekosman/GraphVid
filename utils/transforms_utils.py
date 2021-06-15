@@ -2,6 +2,7 @@ from torchvision.transforms import transforms
 
 from transforms import transforms_video
 from transforms.create_superpixels_flow_graph import VideoClipToSuperPixelFlowGraph
+from transforms.transforms_video import RandomResizedCropVideo
 
 
 def build_transforms():
@@ -15,6 +16,7 @@ def build_transforms():
         # transforms_video.ToTensorVideo(),
         # transforms_video.RandomResizedCropVideo(size=(video_height, video_width), crop=video_width),
         # transforms_video.NormalizeVideo(mean=mean, std=std)
+        RandomResizedCropVideo(size=(480, 640),),
         VideoClipToSuperPixelFlowGraph(),
     ])
 
