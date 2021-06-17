@@ -6,6 +6,7 @@ from os import path
 import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
+from torch_geometric.data import DataLoader
 from torchsummary import summary
 
 from loaders.kinetics_loader import Kinetics
@@ -30,7 +31,7 @@ def classification_batch_splitter(batch):
     :param batch: input data for AutoEncoder
     :return: tuple (inputs, targets)
     """
-    return batch
+    return (batch[0], ), batch[1]
 
 
 def train_video_recognition(
@@ -49,11 +50,11 @@ def train_video_recognition(
     # train_loader[0]
     # train_loader[1]
 
-    train_iter = torch.utils.data.DataLoader(train_loader,
-                                             batch_size=args.batch_size,
-                                             shuffle=True,
-                                             num_workers=1,
-                                             pin_memory=True)
+    train_iter = DataLoader(train_loader,
+                            batch_size=args.batch_size,
+                            shuffle=True,
+                            num_workers=0,
+                            pin_memory=True)
 
     eval_loader = Kinetics(
         dataset_path=args.dataset_path_validation,
@@ -61,11 +62,11 @@ def train_video_recognition(
         **vars(args),
     )
 
-    eval_iter = torch.utils.data.DataLoader(eval_loader,
-                                            batch_size=args.batch_size,
-                                            shuffle=False,
-                                            num_workers=8,
-                                            pin_memory=True)
+    eval_iter = DataLoader(eval_loader,
+                           batch_size=args.batch_size,
+                           shuffle=False,
+                           num_workers=8,
+                           pin_memory=True)
 
     test_loader = Kinetics(
         dataset_path=args.dataset_path_test,
@@ -73,11 +74,11 @@ def train_video_recognition(
         **vars(args),
     )
 
-    test_iter = torch.utils.data.DataLoader(test_loader,
-                                            batch_size=args.batch_size,
-                                            shuffle=False,
-                                            num_workers=8,
-                                            pin_memory=True)
+    test_iter = DataLoader(test_loader,
+                           batch_size=args.batch_size,
+                           shuffle=False,
+                           num_workers=8,
+                           pin_memory=True)
 
     # Create the model
     if model_path is None or not path.exists(model_path):
@@ -88,7 +89,7 @@ def train_video_recognition(
 
     model.to(args.device)
     # logging.info(summary(model, train_loader.get_loader_shape()))
-    model.data_parallel()
+    # model.data_parallel()
 
     criterion = CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -139,7 +140,7 @@ def get_args():
                         help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--model_type',
                         default='gcn',
-                        choices=['gcn', 'gat'],
+                        choices=['gcn', 'gat', 'simple_gcn', 'pna'],
                         type=str,
                         help='which model to use for training')
     parser.add_argument('--model_path',

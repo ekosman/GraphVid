@@ -17,6 +17,7 @@ class SimpleGCN(nn.Module):
 
     def forward(self, data):
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        x = x.float()
         x = self.conv1(x, edge_index)
         x = F.elu(x)
         x = self.conv2(x, edge_index)

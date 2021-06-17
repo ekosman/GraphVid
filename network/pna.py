@@ -13,8 +13,8 @@ from torch_geometric.utils import degree
 
 # Implemented with the help of Matthias Fey, author of PyTorch Geometric
 # For an example see https://github.com/rusty1s/pytorch_geometric/blob/master/examples/pna.py
-from src.archs.aggregators import AGGREGATORS
-from src.archs.scalers import SCALERS
+from network.aggregators import AGGREGATORS
+from network.scalers import SCALERS
 
 
 class PNAConv(MessagePassing):

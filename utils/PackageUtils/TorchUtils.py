@@ -249,7 +249,7 @@ class TorchModel(nn.Module):
             start_time = time.time()
             if batch_splitter:
                 batch, targets = batch_splitter(batch)
-            # print(targets)
+
             batch = self.data_to_device(batch, self.device)
             targets = self.data_to_device(targets, self.device)
 

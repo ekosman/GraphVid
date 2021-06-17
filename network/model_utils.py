@@ -1,5 +1,7 @@
+from network.SimpleGCN import SimpleGCN
 from network.gat_sage import GATSage
 from network.mlp_node_prediction import MLP
+from network.pna import PNA
 from network.sage import SAGE
 
 
@@ -17,7 +19,11 @@ def get_model(num_features, num_classes, arch):
         model = GATSage(num_features, num_classes)
     elif arch == 'mlp':
         model = MLP(num_features, num_classes, 2)
+    elif arch == 'pna':
+        model = PNA()
+    elif arch == 'simple_gcn':
+        model = SimpleGCN(num_node_features=num_features, num_classes=num_classes)
     else:
         raise NotImplementedError
 
-    return model
+    return model.float()

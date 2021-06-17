@@ -6,6 +6,8 @@ from transforms.transforms_video import RandomResizedCropVideo
 
 
 def build_transforms():
+    """"""
+
     """
     Builds the transformations for video clips
     Returns: Torchvision transform object
