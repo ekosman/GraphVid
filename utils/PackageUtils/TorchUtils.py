@@ -74,11 +74,14 @@ class TorchModel(nn.Module):
 
     def __init__(self, model):
         super(TorchModel, self).__init__()
-        self.device = get_torch_device()
         self.iteration = 0
         self.model = model
         self.is_data_parallel = False
         self.callbacks = []
+
+    @property
+    def device(self):
+        return next(self.model.parameters()).device
 
     def register_callback(self, callback_fn):
         """

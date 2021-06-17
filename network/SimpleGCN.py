@@ -7,10 +7,10 @@ class SimpleGCN(nn.Module):
     def __init__(self, num_node_features, num_classes=10):
         super(SimpleGCN, self).__init__()
         hidden_channels = 16
-        self.conv1 = GATConv(num_node_features, 32)
-        self.conv2 = GATConv(32, 64)
-        self.conv3 = GATConv(64, 128)
-        self.conv4 = GATConv(128, 256)
+        self.conv1 = GATConv(num_node_features, 32, add_self_loops=False)
+        self.conv2 = GATConv(32, 64, add_self_loops=False)
+        self.conv3 = GATConv(64, 128, add_self_loops=False)
+        self.conv4 = GATConv(128, 256, add_self_loops=False)
 
         self.lin1 = nn.Linear(256, 128)
         self.lin2 = nn.Linear(128, num_classes)

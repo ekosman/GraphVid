@@ -124,8 +124,12 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
             # plt.axvline(mean_+std, color='r')
             # plt.show()
             for source, neighbor in enumerate(nearest_neighbors):
+                if f"level_{i_frame - 1}_segment_{source}" not in parent_graph.nodes:
+                    raise Exception
+                if f"level_{i_frame}_segment_{neighbor}" not in parent_graph.nodes:
+                    raise Exception
                 parent_graph.add_edge(f"level_{i_frame - 1}_segment_{source}",
-                                      f"level_{i_frame}_segment_{nearest_neighbors}")
+                                      f"level_{i_frame}_segment_{neighbor}")
 
         last_layer_nodes = current_layer_nodes
 

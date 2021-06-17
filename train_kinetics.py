@@ -10,6 +10,7 @@ from torch_geometric.data import DataLoader
 from torchsummary import summary
 
 from loaders.kinetics_loader import Kinetics
+from losses.loss_wrapper import LossWrapper
 from network.model_utils import get_model
 from utils.PackageUtils.ArgparseUtils import update_args, log_args_description
 from utils.PackageUtils.DateUtils import get_time_str
@@ -53,7 +54,7 @@ def train_video_recognition(
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
-                            num_workers=0,
+                            num_workers=16,
                             pin_memory=True)
 
     eval_loader = Kinetics(
@@ -91,7 +92,7 @@ def train_video_recognition(
     # logging.info(summary(model, train_loader.get_loader_shape()))
     # model.data_parallel()
 
-    criterion = CrossEntropyLoss()
+    criterion = LossWrapper(CrossEntropyLoss())
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     tb_writer = SummaryWriter(log_dir=output_dirs.tensorboard_dir)
 
