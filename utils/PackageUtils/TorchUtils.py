@@ -303,7 +303,7 @@ class TorchModel(nn.Module):
                                   )
 
             for metric in self.evaluation_metrics:
-                logging.info(f"{metric.name}: {metric(targets, outputs)}")
+                logging.info(f"{metric.name}: {metric(targets.detach().cpu(), outputs.detach().cpu())}")
 
             self.iteration += 1
 

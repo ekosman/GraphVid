@@ -20,8 +20,11 @@ def get_adjacents(segments):
     adjacents = {v: set() for v in np.unique(segments)}
 
     ys, xs = np.where(horizontal_shift_match)
-    left_segments = segments[ys, np.clip(xs - 1, 0, xs.max())]
-    right_segments = segments[ys, np.clip(xs + 1, 0, xs.max())]
+    try:
+        left_segments = segments[ys, np.clip(xs - 1, 0, xs.max())]
+        right_segments = segments[ys, np.clip(xs + 1, 0, xs.max())]
+    except Exception as e:
+        i = 1
 
     ys, xs = np.where(vertical_shift_match)
     up_segments = segments[np.clip(ys - 1, 0, ys.max()), xs]
@@ -86,8 +89,12 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
     for i_frame, frame in enumerate(clip):
         child_graph = DiGraph()
         segments = slic(frame, n_segments=n_segments, compactness=compactness, start_label=0)
-        adjacents = get_adjacents(segments)
         idxs = np.unique(segments)
+        if len(idxs) < 2:
+            last_layer_nodes = None
+            continue
+
+        adjacents = get_adjacents(segments)
         # idxs.sort()
         node_attrs = {idx:  get_attr_for_segment(frame, segments, idx, method='mean_color') for idx in idxs}
         node_coordinates = {idx:  get_attr_for_segment(frame, segments, idx, method='mean_coordinates') for idx in idxs}
@@ -112,7 +119,7 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
 
         parent_graph = nx.compose(parent_graph, child_graph)
 
-        if i_frame != 0:
+        if last_layer_nodes is not None:
             feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=4000)
             nearest_neighbors = np.argmin(feature_distances, axis=1)
             dists = feature_distances[list(range(feature_distances.shape[0])), nearest_neighbors]
