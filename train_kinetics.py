@@ -10,6 +10,7 @@ from torch_geometric.data import DataLoader
 from torchsummary import summary
 
 from loaders.kinetics_loader import Kinetics
+from losses.evaluation_metrics import Accuracy
 from losses.loss_wrapper import LossWrapper
 from network.model_utils import get_model
 from utils.PackageUtils.ArgparseUtils import update_args, log_args_description
@@ -47,9 +48,6 @@ def train_video_recognition(
         transform=build_transforms(),
         **vars(args),
     )
-
-    # train_loader[0]
-    # train_loader[1]
 
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
@@ -104,6 +102,8 @@ def train_video_recognition(
     model.register_callback(DefaultModelCallback(log_every=args.log_every,
                                                  save_every=args.save_every,
                                                  loss_names=losses_names))
+
+    model.add_evaluation_metric(Accuracy())
 
     if args.epochs != 0:
         model.fit(

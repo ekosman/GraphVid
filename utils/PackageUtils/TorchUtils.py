@@ -77,7 +77,11 @@ class TorchModel(nn.Module):
         self.iteration = 0
         self.model = model
         self.is_data_parallel = False
+        self.evaluation_metrics = []
         self.callbacks = []
+
+    def add_evaluation_metric(self, metric):
+        self.evaluation_metrics.append(metric)
 
     @property
     def device(self):
@@ -206,6 +210,8 @@ class TorchModel(nn.Module):
         self.eval()
         self.notify_callbacks('on_evaluation_start', len(data_iter))
         total_loss = None
+        all_targets = torch.tensor([])
+        all_outputs = torch.tensor([])
 
         with torch.no_grad():
             for iteration, batch in enumerate(data_iter):
@@ -217,6 +223,9 @@ class TorchModel(nn.Module):
 
                 outputs = self.model(*batch)
                 loss = criterion(outputs, targets, *batch)
+
+                all_targets = torch.cat([all_targets, targets.detach().cpu()])
+                all_outputs = torch.cat([all_outputs, targets.detach().cpu()])
 
                 self.notify_callbacks('on_evaluation_step',
                                       iteration,
@@ -239,6 +248,10 @@ class TorchModel(nn.Module):
             loss = [l / len(data_iter) for l in total_loss]
         else:
             loss = total_loss / len(data_iter)
+
+        for metric in self.evaluation_metrics:
+            logging.info(f"{metric.name}: {metric(all_targets, all_outputs)}")
+
         self.notify_callbacks('on_evaluation_end')
         return loss
 
@@ -259,7 +272,6 @@ class TorchModel(nn.Module):
             outputs = self.model(*batch)
 
             loss = criterion(outputs, targets)
-            # loss = criterion(outputs, targets, *batch)
 
             # Backward and optimize
             optimizer.zero_grad()
@@ -289,6 +301,10 @@ class TorchModel(nn.Module):
                                   iteration,
                                   [l.item() for l in loss] if type(loss) == tuple else loss.item(),
                                   )
+
+            for metric in self.evaluation_metrics:
+                logging.info(f"{metric.name}: {metric(targets, outputs)}")
+
             self.iteration += 1
 
         if type(total_loss) == list:
