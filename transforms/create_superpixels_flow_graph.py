@@ -13,6 +13,10 @@ from skimage.segmentation import slic
 from torch_geometric.utils import from_networkx
 
 
+class EmptyGraphException(Exception):
+    pass
+
+
 def get_adjacents(segments):
     horizontal_shift_match = segments[:, :-1] != segments[:, 1:]
     vertical_shift_match = segments[-1:, :] != segments[1:, :]
@@ -139,6 +143,9 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
                                       f"level_{i_frame}_segment_{neighbor}")
 
         last_layer_nodes = current_layer_nodes
+
+    if parent_graph.number_of_nodes() == 0:
+        raise EmptyGraphException
 
     return parent_graph
 

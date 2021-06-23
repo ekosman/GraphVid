@@ -1,9 +1,14 @@
+import logging
+import random
+
 import torch
 from torchvision.datasets import VisionDataset
 from torchvision.datasets.folder import make_dataset
 from torchvision.datasets.utils import list_dir
 from torchvision.datasets.video_utils import VideoClips
 from os import path
+
+from transforms.create_superpixels_flow_graph import EmptyGraphException
 
 
 class Kinetics(VisionDataset):
@@ -40,12 +45,13 @@ class Kinetics(VisionDataset):
             - label (int): class of the video clip
     """
 
-    def __init__(self, dataset_path, frames_per_clip=16, step_between_clips=1, frame_rate=None,
+    def __init__(self, dataset_path, frames_per_clip=16, step_between_clips=8, frame_rate=None,
                  extensions=('avi', 'mp4', 'mkv'), transform=None, _precomputed_metadata=None,
                  num_workers=8, _video_width=0, _video_height=0,
                  _video_min_dimension=0, _audio_samples=0, _audio_channels=0, **kwargs):
         super(Kinetics, self).__init__(dataset_path)
 
+        self.show_errors = False
         classes = list(sorted(list_dir(dataset_path)))
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         self.samples = make_dataset(self.root, class_to_idx, extensions, is_valid_file=None)
@@ -87,7 +93,7 @@ class Kinetics(VisionDataset):
     def __len__(self):
         return self.video_clips.num_clips()
 
-    def __getitem__(self, idx):
+    def get_item_aux(self, idx):
         if self.cached_graphs[idx] is not None:
             return self.cached_graphs[idx]
 
@@ -100,4 +106,27 @@ class Kinetics(VisionDataset):
 
         self.cached_graphs[idx] = video, label
 
+        if video is None or label is None:
+            pass
         return video, label
+
+    def __getitem__(self, idx):
+        """
+        Method to access the i'th sample of the dataset
+        Args:
+            index: the sample index
+
+        Returns: the i'th sample of this dataset
+        """
+        succ = False
+        while not succ:
+            try:
+                data = self.get_item_aux(idx)
+                succ = True
+            except EmptyGraphException as e:
+                idx = random.randint(0, len(self) - 1)
+
+                if self.show_errors:
+                    logging.warning(e)
+
+        return data
