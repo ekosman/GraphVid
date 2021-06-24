@@ -52,7 +52,7 @@ def train_video_recognition(
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
-                            num_workers=0,
+                            num_workers=16,
                             pin_memory=True)
 
     eval_loader = Kinetics(
@@ -64,7 +64,7 @@ def train_video_recognition(
     eval_iter = DataLoader(eval_loader,
                            batch_size=args.batch_size,
                            shuffle=False,
-                           num_workers=8,
+                           num_workers=16,
                            pin_memory=True)
 
     test_loader = Kinetics(
@@ -76,7 +76,7 @@ def train_video_recognition(
     test_iter = DataLoader(test_loader,
                            batch_size=args.batch_size,
                            shuffle=False,
-                           num_workers=8,
+                           num_workers=16,
                            pin_memory=True)
 
     # Create the model
