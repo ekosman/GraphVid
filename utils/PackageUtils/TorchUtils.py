@@ -222,7 +222,7 @@ class TorchModel(nn.Module):
                 targets = self.data_to_device(targets, self.device)
 
                 outputs = self.model(*batch)
-                loss = criterion(outputs, targets, *batch)
+                loss = criterion(outputs, targets)
 
                 all_targets = torch.cat([all_targets, targets.detach().cpu()])
                 all_outputs = torch.cat([all_outputs, targets.detach().cpu()])
