@@ -1,5 +1,6 @@
 import cProfile
 import sys
+import time
 from os import path
 # import matplotlib.pyplot as plt
 import cv2
@@ -10,11 +11,29 @@ from networkx import DiGraph
 from scipy.spatial.distance import cdist
 from skimage import color
 from skimage.segmentation import slic
+from fast_slic.avx2 import SlicAvx2
 from torch_geometric.utils import from_networkx
+import cv2
 
 
 class EmptyGraphException(Exception):
     pass
+
+
+# def get_y_edges(x, y, segments):
+
+
+
+def get_adjacents_v2(segments):
+    grad_y = segments[1:, :] - segments[:-1, :]
+    contour_y = np.where(grad_y != 0)
+    grad_x = segments[:, 1:] - segments[:, :-1]
+    contour_x = np.where(grad_x != 0)
+
+    edges_y = set([frozenset((segments[y, x], segments[y + 1, x])) for y, x in zip(*contour_y)])
+    edges_x = set([frozenset((segments[y, x], segments[y, x + 1])) for y, x in zip(*contour_x)])
+
+    return edges_y.union(edges_x)
 
 
 def get_adjacents(segments):
@@ -89,39 +108,27 @@ def get_distances(sources, targets, alpha):
 def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
     last_layer_nodes = None
     parent_graph = DiGraph()
+    slic_avx2 = SlicAvx2(num_components=n_segments, compactness=compactness)
 
     for i_frame, frame in enumerate(clip):
-        child_graph = DiGraph()
-        segments = slic(frame, n_segments=n_segments, compactness=compactness, start_label=0)
+        segments = slic_avx2.iterate(frame.contiguous().numpy().astype(np.uint8))  # Cluster Map
         idxs = np.unique(segments)
         if len(idxs) < 2:
             last_layer_nodes = None
             continue
 
-        adjacents = get_adjacents(segments)
-        # idxs.sort()
-        node_attrs = {idx:  get_attr_for_segment(frame, segments, idx, method='mean_color') for idx in idxs}
-        node_coordinates = {idx:  get_attr_for_segment(frame, segments, idx, method='mean_coordinates') for idx in idxs}
+        edges = get_adjacents_v2(segments)
+        node_attrs = {idx: get_attr_for_segment(frame, segments, idx, method='mean_color') for idx in idxs}
+        node_coordinates = {idx: get_attr_for_segment(frame, segments, idx, method='mean_coordinates') for idx in idxs}
         current_layer_nodes = [(node_attrs[idx], node_coordinates[idx]) for idx in idxs]
 
         for idx in idxs:
             node_name = f"level_{i_frame}_segment_{idx}"
+            parent_graph.add_node(node_name, x=np.concatenate([node_attrs[idx], node_coordinates[idx]]))
 
-            if not child_graph.has_node(node_name):
-                child_graph.add_node(node_name, x=np.concatenate([node_attrs[idx], node_coordinates[idx]]))
-
-            for adjacent in adjacents[idx]:
-                adjacent_name = f"level_{i_frame}_segment_{adjacent}"
-
-                if not child_graph.has_node(adjacent_name):
-                    child_graph.add_node(adjacent_name, x=np.concatenate([node_attrs[adjacent], node_coordinates[adjacent]]))
-
-                if not child_graph.has_edge(node_name, adjacent_name):
-                    child_graph.add_edge(node_name, adjacent_name)
-                if not child_graph.has_edge(adjacent_name, node_name):
-                    child_graph.add_edge(adjacent_name, node_name)
-
-        parent_graph = nx.compose(parent_graph, child_graph)
+        for edge in (list(z) for z in edges):
+            parent_graph.add_edge(edge[0], edge[1])
+            parent_graph.add_edge(edge[1], edge[0])
 
         if last_layer_nodes is not None:
             feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=4000)
@@ -151,13 +158,20 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
 
 
 class VideoClipToSuperPixelFlowGraph:
-    def __init__(self, n_segments=200, compactness=10):
+    def __init__(self, n_segments=100, compactness=10):
         self.n_segments = n_segments
         self.compactness = compactness
 
     def __call__(self, clip):
         clip = torch.transpose(clip, dim0=1, dim1=2)
-        return create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
+
+        # profiler = cProfile.Profile()
+        # profiler.enable()
+        res = create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
+        # profiler.disable()
+        # profiler.print_stats(sort='tottime')
+
+        return res
 
 
 class NetworkxToGeometric:
@@ -167,7 +181,8 @@ class NetworkxToGeometric:
 
 if __name__ == '__main__':
     clip_length = 16
-    cap = cv2.VideoCapture(path.join(r'/media/eitank/disk2T/Datasets/kinetics-downloader/dataset/train/arranging_flowers/0a8l_Pou_C8.mp4'))
+    cap = cv2.VideoCapture(
+        path.join(r'/media/eitank/disk2T/Datasets/kinetics-downloader/dataset/train/arranging_flowers/0a8l_Pou_C8.mp4'))
 
     # Read until video is completed
     clip = []

@@ -52,7 +52,7 @@ def train_video_recognition(
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
-                            num_workers=16,
+                            num_workers=0,
                             pin_memory=True)
 
     eval_loader = Kinetics(
