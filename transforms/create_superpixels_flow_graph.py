@@ -127,8 +127,10 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
             parent_graph.add_node(node_name, x=np.concatenate([node_attrs[idx], node_coordinates[idx]]))
 
         for edge in (list(z) for z in edges):
-            parent_graph.add_edge(edge[0], edge[1])
-            parent_graph.add_edge(edge[1], edge[0])
+            u = f"level_{i_frame}_segment_{edge[0]}"
+            v = f"level_{i_frame}_segment_{edge[1]}"
+            parent_graph.add_edge(u, v)
+            parent_graph.add_edge(v, u)
 
         if last_layer_nodes is not None:
             feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=4000)
@@ -158,18 +160,18 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
 
 
 class VideoClipToSuperPixelFlowGraph:
-    def __init__(self, n_segments=100, compactness=10):
+    def __init__(self, n_segments=80, compactness=10):
         self.n_segments = n_segments
         self.compactness = compactness
 
     def __call__(self, clip):
         clip = torch.transpose(clip, dim0=1, dim1=2)
 
-        # profiler = cProfile.Profile()
-        # profiler.enable()
+        profiler = cProfile.Profile()
+        profiler.enable()
         res = create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
-        # profiler.disable()
-        # profiler.print_stats(sort='tottime')
+        profiler.disable()
+        profiler.print_stats(sort='tottime')
 
         return res
 

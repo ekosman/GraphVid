@@ -10,7 +10,7 @@ from torch_geometric.data import DataLoader
 from torchsummary import summary
 
 from loaders.kinetics_loader import Kinetics
-from losses.evaluation_metrics import Accuracy
+from losses.evaluation_metrics import AccuracyTopK
 from losses.loss_wrapper import LossWrapper
 from network.model_utils import get_model
 from utils.PackageUtils.ArgparseUtils import update_args, log_args_description
@@ -103,7 +103,8 @@ def train_video_recognition(
                                                  save_every=args.save_every,
                                                  loss_names=losses_names))
 
-    model.add_evaluation_metric(Accuracy())
+    model.add_evaluation_metric(AccuracyTopK(k=1))
+    model.add_evaluation_metric(AccuracyTopK(k=5))
 
     if args.epochs != 0:
         model.fit(
@@ -135,10 +136,9 @@ def get_args():
                         default=1,
                         type=int,
                         help='logging intervals while training (iterations)')
-    parser.add_argument('--save_every',
-                        default=10,
-                        type=int,
-                        help=r'saving model checkpoints every specified amount of epochs')
+    parser.add_argument('--save_every', default=10, type=int, help=r'saving model checkpoints every specified amount of epochs')
+    parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
+    parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
     parser.add_argument('--model_type',
                         default='gcn',
                         choices=['gcn', 'gat', 'simple_gcn', 'pna'],

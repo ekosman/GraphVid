@@ -45,7 +45,7 @@ class Kinetics(VisionDataset):
             - label (int): class of the video clip
     """
 
-    def __init__(self, dataset_path, frames_per_clip=16, step_between_clips=8, frame_rate=None,
+    def __init__(self, dataset_path, frames_per_clip=16, step_between_clips=8, steps_between_frames=1,
                  extensions=('avi', 'mp4', 'mkv'), transform=None, _precomputed_metadata=None,
                  num_workers=8, _video_width=0, _video_height=0,
                  _video_min_dimension=0, _audio_samples=0, _audio_channels=0, **kwargs):
@@ -56,6 +56,8 @@ class Kinetics(VisionDataset):
         class_to_idx = {classes[i]: i for i in range(len(classes))}
         self.samples = make_dataset(self.root, class_to_idx, extensions, is_valid_file=None)
         self.classes = classes
+        self.steps_between_frames = steps_between_frames
+        self.total_clip_duration_in_frames = frames_per_clip * steps_between_frames
         video_list = [x[0] for x in self.samples]
         precomputed_metadata_path = path.join(dataset_path, 'metadata.pt')
         flag_metadata_exists = False
@@ -64,9 +66,9 @@ class Kinetics(VisionDataset):
             flag_metadata_exists = True
         self.video_clips = VideoClips(
             video_list,
-            frames_per_clip,
+            self.total_clip_duration_in_frames,
             step_between_clips,
-            frame_rate,
+            None,
             _precomputed_metadata,
             num_workers=num_workers,
             _video_width=_video_width,
@@ -97,7 +99,9 @@ class Kinetics(VisionDataset):
         if self.cached_graphs[idx] is not None:
             return self.cached_graphs[idx]
 
+        # video is Tensor[T, H, W, C]
         video, audio, info, video_idx = self.video_clips.get_clip(idx)
+        video = video[range(0, self.total_clip_duration_in_frames, self.steps_between_frames)]
         video = (video * 1.0).to(torch.float32)
         label = self.samples[video_idx][1]
 
