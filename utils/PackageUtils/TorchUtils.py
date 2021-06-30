@@ -215,6 +215,8 @@ class TorchModel(nn.Module):
 
         with torch.no_grad():
             for iteration, batch in enumerate(data_iter):
+                # if iteration > 10:
+                #     break
                 if batch_splitter:
                     batch, targets = batch_splitter(batch)
 
@@ -225,7 +227,7 @@ class TorchModel(nn.Module):
                 loss = criterion(outputs, targets)
 
                 all_targets = torch.cat([all_targets, targets.detach().cpu()])
-                all_outputs = torch.cat([all_outputs, targets.detach().cpu()])
+                all_outputs = torch.cat([all_outputs, outputs.detach().cpu()])
 
                 self.notify_callbacks('on_evaluation_step',
                                       iteration,

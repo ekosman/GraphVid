@@ -68,17 +68,19 @@ class RandomResizedCropVideo(RandomResizedCrop):
         channel_last = clip.shape[-1] == 3
         if channel_last:
             clip = clip.permute(0, -1, 1, 2)  # T, C, H, W
-        clip = F.resize(clip, self.size, self.interpolation_mode)
-        if self.crop is not None:
-            if clip.shape[2] - self.crop > 0:
-                i = np.random.randint(clip.shape[2] - self.crop)
-            else:
-                i = 0
-            if clip.shape[3] - self.crop > 0:
-                j = np.random.randint(clip.shape[3] - self.crop)
-            else:
-                j = 0
-            clip = clip[..., i:i+self.crop, j:j+self.crop]
+
+        if clip.shape[-1] > self.size[-1]:
+            clip = F.resize(clip, self.size, self.interpolation_mode)
+            if self.crop is not None:
+                if clip.shape[2] - self.crop > 0:
+                    i = np.random.randint(clip.shape[2] - self.crop)
+                else:
+                    i = 0
+                if clip.shape[3] - self.crop > 0:
+                    j = np.random.randint(clip.shape[3] - self.crop)
+                else:
+                    j = 0
+                clip = clip[..., i:i+self.crop, j:j+self.crop]
 
         if channel_last:
             clip = clip.permute(0, 2, 3, 1)

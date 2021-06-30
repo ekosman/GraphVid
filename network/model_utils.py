@@ -1,3 +1,4 @@
+from network import spline_cnn
 from network.SimpleGCN import SimpleGCN
 from network.gat_sage import GATSage
 from network.mlp_node_prediction import MLP
@@ -21,6 +22,8 @@ def get_model(num_features, num_classes, arch):
         model = MLP(num_features, num_classes, 2)
     elif arch == 'pna':
         model = PNA()
+    elif arch == 'spline':
+        model = spline_cnn.Net(num_features=num_features, num_classes=num_classes)
     elif arch == 'simple_gcn':
         model = SimpleGCN(num_node_features=num_features, num_classes=num_classes)
     else:

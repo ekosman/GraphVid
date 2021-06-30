@@ -20,18 +20,31 @@ class EmptyGraphException(Exception):
     pass
 
 
-# def get_y_edges(x, y, segments):
-
-
-
 def get_adjacents_v2(segments):
     grad_y = segments[1:, :] - segments[:-1, :]
     contour_y = np.where(grad_y != 0)
     grad_x = segments[:, 1:] - segments[:, :-1]
     contour_x = np.where(grad_x != 0)
 
-    edges_y = set([frozenset((segments[y, x], segments[y + 1, x])) for y, x in zip(*contour_y)])
-    edges_x = set([frozenset((segments[y, x], segments[y, x + 1])) for y, x in zip(*contour_x)])
+    # dy edges
+    xs = contour_y[1]
+    y_sources = contour_y[0]
+    y_targets = contour_y[0] + 1
+
+    labels_source = segments[y_sources, xs]
+    labels_targets = segments[y_targets, xs]
+
+    edges_y = {frozenset((s, t)) for s, t in zip(labels_source, labels_targets)}
+
+    # dx edges
+    ys = contour_x[0]
+    x_sources = contour_x[1]
+    x_targets = contour_x[1] + 1
+
+    labels_source = segments[ys, x_sources]
+    labels_targets = segments[ys, x_targets]
+
+    edges_x = {frozenset((s, t)) for s, t in zip(labels_source, labels_targets)}
 
     return edges_y.union(edges_x)
 
@@ -82,9 +95,9 @@ def get_adjacents(segments):
 
 def get_attr_for_segment(frame, segments, segment_id, method='mean_color'):
     pixel_idxs = np.where(segments == segment_id)
-    colors = frame[pixel_idxs]
 
     if method == 'mean_color':
+        colors = frame[pixel_idxs]
         return (colors * 1.0).mean(axis=0)
     if method == 'mean_coordinates':
         return np.mean(pixel_idxs[0]) / frame.shape[0], np.mean(pixel_idxs[1]) / frame.shape[1]
@@ -105,13 +118,38 @@ def get_distances(sources, targets, alpha):
     return features_distances + alpha * coordinates_distances
 
 
-def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
+def dist(coords1, coords2):
+    return np.linalg.norm(coords1 - coords2, ord=2)
+
+
+def node_feature_retriever_definer(node_features_mode):
+    def only_coords(attrs, coords):
+        return coords
+
+    def only_attrs(attrs, coords):
+        return attrs
+
+    def concat(attrs, coords):
+        return np.concatenate([attrs, coords])
+
+    if node_features_mode == 'only_coords':
+        return only_coords
+    elif node_features_mode == 'only_attrs':
+        return only_attrs
+    elif node_features_mode == 'concat':
+        return concat
+    else:
+        raise NotImplementedError
+
+
+def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_mode='concat'):
+    node_feature_retriever = node_feature_retriever_definer(node_features_mode)
     last_layer_nodes = None
     parent_graph = DiGraph()
-    slic_avx2 = SlicAvx2(num_components=n_segments, compactness=compactness)
 
     for i_frame, frame in enumerate(clip):
-        segments = slic_avx2.iterate(frame.contiguous().numpy().astype(np.uint8))  # Cluster Map
+        slic_model = SlicAvx2(num_components=n_segments, compactness=compactness, num_threads=8)
+        segments = slic_model.iterate(frame.contiguous().numpy().astype(np.uint8))  # Cluster Map
         idxs = np.unique(segments)
         if len(idxs) < 2:
             last_layer_nodes = None
@@ -124,13 +162,15 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
 
         for idx in idxs:
             node_name = f"level_{i_frame}_segment_{idx}"
-            parent_graph.add_node(node_name, x=np.concatenate([node_attrs[idx], node_coordinates[idx]]))
+
+            parent_graph.add_node(node_name, x=node_feature_retriever(node_attrs[idx], node_coordinates[idx]))
 
         for edge in (list(z) for z in edges):
             u = f"level_{i_frame}_segment_{edge[0]}"
             v = f"level_{i_frame}_segment_{edge[1]}"
-            parent_graph.add_edge(u, v)
-            parent_graph.add_edge(v, u)
+            d = dist(node_coordinates[u], node_coordinates[v])
+            parent_graph.add_edge(u, v, edge_attr=d)
+            parent_graph.add_edge(v, u, edge_attr=d)
 
         if last_layer_nodes is not None:
             feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=4000)
@@ -148,8 +188,11 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
                     raise Exception
                 if f"level_{i_frame}_segment_{neighbor}" not in parent_graph.nodes:
                     raise Exception
+
+                d = dist(last_layer_nodes[source][1], current_layer_nodes[neighbor][1])
                 parent_graph.add_edge(f"level_{i_frame - 1}_segment_{source}",
-                                      f"level_{i_frame}_segment_{neighbor}")
+                                      f"level_{i_frame}_segment_{neighbor}",
+                                      edge_attr=d)
 
         last_layer_nodes = current_layer_nodes
 
@@ -160,18 +203,18 @@ def create_superpixels_flow_graph(clip, n_segments=200, compactness=10):
 
 
 class VideoClipToSuperPixelFlowGraph:
-    def __init__(self, n_segments=80, compactness=10):
+    def __init__(self, n_segments=30, compactness=10):
         self.n_segments = n_segments
         self.compactness = compactness
 
     def __call__(self, clip):
-        clip = torch.transpose(clip, dim0=1, dim1=2)
+        # clip = torch.transpose(clip, dim0=1, dim1=2)
 
-        profiler = cProfile.Profile()
-        profiler.enable()
+        # profiler = cProfile.Profile()
+        # profiler.enable()
         res = create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
-        profiler.disable()
-        profiler.print_stats(sort='tottime')
+        # profiler.disable()
+        # profiler.print_stats(sort='tottime')
 
         return res
 

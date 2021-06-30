@@ -1,37 +1,33 @@
 import torch
 import torch.nn.functional as F
-import torch_geometric.transforms as T
-from torch_geometric.nn import SplineConv, graclus, max_pool
-import torch.nn as nn
-from src.archs.monet import normalized_cut_2d
+from torch_geometric.nn import SplineConv
 
 """
-Implementation from: https://github.com/rusty1s/pytorch_spline_conv
+https://github.com/rusty1s/pytorch_geometric/blob/master/examples/faust.py
 """
 
 
-class SplineCNN(torch.nn.Module):
-    def __init__(self):
-        super(SplineCNN, self).__init__()
-        self.conv1 = SplineConv(1, 32, dim=1, kernel_size=5)
-        self.conv2 = SplineConv(32, 64, dim=1, kernel_size=5)
-        self.lin1 = nn.Linear(64, 128)
-        self.lin2 = nn.Linear(128, 10)
+class Net(torch.nn.Module):
+    def __init__(self, num_features, num_classes):
+        super(Net, self).__init__()
+        self.conv1 = SplineConv(num_features, 32, dim=1, kernel_size=5, aggr='add')
+        self.conv2 = SplineConv(32, 64, dim=1, kernel_size=5, aggr='add')
+        self.conv3 = SplineConv(64, 64, dim=1, kernel_size=5, aggr='add')
+        self.conv4 = SplineConv(64, 64, dim=1, kernel_size=5, aggr='add')
+        self.conv5 = SplineConv(64, 64, dim=1, kernel_size=5, aggr='add')
+        self.conv6 = SplineConv(64, 64, dim=1, kernel_size=5, aggr='add')
+        self.lin1 = torch.nn.Linear(64, 256)
+        self.lin2 = torch.nn.Linear(256, num_classes)
 
     def forward(self, data):
-        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
-        x = self.conv1(x)
-        x = F.elu(x)
-
-        weight = normalized_cut_2d(data.edge_index, data.pos)
-        cluster = graclus(data.edge_index, weight, x.size(0))
-        data.edge_attr = None
-        data = max_pool(cluster, data, transform=T.Cartesian(cat=False))
-        x = F.elu(self.conv1(x, edge_index, edge_attr))
-        x = self.conv2(x, edge_index, edge_attr)
-        x = F.elu(self.conv3(x, edge_index, edge_attr))
-        x = self.conv4(x, edge_index, edge_attr)
-        x = F.elu(self.conv5(x, edge_index, edge_attr))
-        x = self.conv6(x, edge_index, edge_attr)
+        x, edge_index, pseudo = data.x, data.edge_index, data.edge_attr
+        x = F.elu(self.conv1(x, edge_index, pseudo))
+        x = F.elu(self.conv2(x, edge_index, pseudo))
+        x = F.elu(self.conv3(x, edge_index, pseudo))
+        x = F.elu(self.conv4(x, edge_index, pseudo))
+        x = F.elu(self.conv5(x, edge_index, pseudo))
+        x = F.elu(self.conv6(x, edge_index, pseudo))
+        x = F.elu(self.lin1(x))
         x = F.dropout(x, training=self.training)
+        x = self.lin2(x)
         return F.log_softmax(x, dim=1)

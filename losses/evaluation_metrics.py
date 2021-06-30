@@ -5,5 +5,5 @@ class AccuracyTopK:
 
     def __call__(self, y_true, y_pred):
         topk_indices = y_pred.topk(self.k).indices
-        n_true = (topk_indices == y_true).sum()
+        n_true = (topk_indices == y_true.view(-1, 1).expand_as(topk_indices)).sum()
         return n_true / len(y_pred)

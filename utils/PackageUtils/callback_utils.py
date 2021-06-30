@@ -127,7 +127,7 @@ class DefaultModelCallback(Callback):
         test_loss_string = ""
         if test_loss:
             test_loss_string = "     " + "   ".join(
-                [f"{loss_name} validation loss: {loss_value}" for loss_name, loss_value in
+                [f"{loss_name} test loss: {loss_value}" for loss_name, loss_value in
                  zip(self.loss_names, test_loss)])
 
         logging.info(f"""

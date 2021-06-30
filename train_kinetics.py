@@ -52,7 +52,7 @@ def train_video_recognition(
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
-                            num_workers=0,
+                            num_workers=8,
                             pin_memory=True)
 
     eval_loader = Kinetics(
@@ -139,6 +139,7 @@ def get_args():
     parser.add_argument('--save_every', default=10, type=int, help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
+    parser.add_argument('--frames_per_clip', default=16, type=int, help=r'')
     parser.add_argument('--model_type',
                         default='gcn',
                         choices=['gcn', 'gat', 'simple_gcn', 'pna'],
