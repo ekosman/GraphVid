@@ -1,50 +1,48 @@
 import cProfile
 import sys
 import time
+from itertools import product
 from os import path
-# import matplotlib.pyplot as plt
+
 import cv2
-import networkx as nx
 import numpy as np
-import torch
-from networkx import DiGraph
-from scipy.spatial.distance import cdist
-from skimage import color
-from skimage.segmentation import slic
 from fast_slic.avx2 import SlicAvx2
+from networkx import DiGraph
+from numba import jit, njit, prange
+from numpy.linalg import norm
+from numpy import unique, stack, asarray, concatenate
+from scipy.spatial.distance import cdist
 from torch_geometric.utils import from_networkx
-import cv2
 
 
 class EmptyGraphException(Exception):
     pass
 
 
+# @jit(nopython=False, parallel=True)
 def get_adjacents_v2(segments):
-    grad_y = segments[1:, :] - segments[:-1, :]
-    contour_y = np.where(grad_y != 0)
-    grad_x = segments[:, 1:] - segments[:, :-1]
-    contour_x = np.where(grad_x != 0)
+    contour_y = np.where(segments[1:, :] != segments[:-1, :])
+    contour_x = np.where(segments[:, 1:] != segments[:, :-1])
 
     # dy edges
     xs = contour_y[1]
-    y_sources = contour_y[0]
-    y_targets = contour_y[0] + 1
 
-    labels_source = segments[y_sources, xs]
-    labels_targets = segments[y_targets, xs]
+    labels_source = segments[contour_y[0], xs]
+    labels_targets = segments[contour_y[0] + 1, xs]
 
-    edges_y = {frozenset((s, t)) for s, t in zip(labels_source, labels_targets)}
+    edges_y = set()
+    for s, t in zip(labels_source, labels_targets):
+        edges_y.add(frozenset((s, t)))
 
     # dx edges
     ys = contour_x[0]
-    x_sources = contour_x[1]
-    x_targets = contour_x[1] + 1
 
-    labels_source = segments[ys, x_sources]
-    labels_targets = segments[ys, x_targets]
+    labels_source = segments[ys, contour_x[1]]
+    labels_targets = segments[ys, contour_x[1] + 1]
 
-    edges_x = {frozenset((s, t)) for s, t in zip(labels_source, labels_targets)}
+    edges_x = set()
+    for s, t in zip(labels_source, labels_targets):
+        edges_y.add(frozenset((s, t)))
 
     return edges_y.union(edges_x)
 
@@ -93,45 +91,153 @@ def get_adjacents(segments):
     return adjacents
 
 
-def get_attr_for_segment(frame, segments, segment_id, method='mean_color'):
-    pixel_idxs = np.where(segments == segment_id)
+@jit(nopython=True, parallel=True)
+def indices_for_segments(superpixels, num_superpixels):
+    binSize = np.zeros(num_superpixels, dtype=np.int32)
+    for i in range(superpixels.shape[0]):
+        for j in range(superpixels.shape[1]):
+            binSize[superpixels[i, j]] += 1
 
+    # Put the pixels location in the right bin
+    result = [(np.empty(binSize[i], dtype=np.int32), np.empty(binSize[i], dtype=np.int32)) for i in
+              range(num_superpixels)]
+    binPos = np.zeros(num_superpixels, dtype=np.int32)
+    for i in range(superpixels.shape[0]):
+        for j in range(superpixels.shape[1]):
+            binIdx = superpixels[i, j]
+            tmp = result[binIdx]
+            cellBinPos = binPos[binIdx]
+            tmp[0][cellBinPos] = i
+            tmp[1][cellBinPos] = j
+            binPos[binIdx] += 1
+
+    return result
+
+
+def get_attr_for_segment_v2(frame, pixel_ys, pixel_xs, method='mean_color'):
     if method == 'mean_color':
-        colors = frame[pixel_idxs]
+        colors = frame[pixel_ys, pixel_xs]
         return (colors * 1.0).mean(axis=0)
-    if method == 'mean_coordinates':
-        return np.mean(pixel_idxs[0]) / frame.shape[0], np.mean(pixel_idxs[1]) / frame.shape[1]
+    elif method == 'mean_coordinates':
+        return np.mean(pixel_ys) / frame.shape[0], np.mean(pixel_xs) / frame.shape[1]
+    elif method == 'mean_coordinates_and_mean_color':
+        colors = frame[pixel_ys, pixel_xs, :]
+        return (colors * 1.0).mean(axis=0), stack([pixel_ys, pixel_xs]).mean(1) / frame.shape[:-1]
     else:
         raise NotImplementedError
 
 
-def get_distances(sources, targets, alpha):
-    features_sources = np.stack([source[0] for source in sources])
-    features_targets = np.stack([target[0] for target in targets])
-    features_sources = color.rgb2lab(features_sources)
-    features_targets = color.rgb2lab(features_targets)
-    coordinates_sources = np.stack([source[1] for source in sources])
-    coordinates_targets = np.stack([target[1] for target in targets])
+# @jit(nopython=True, parallel=True)
+def get_attr_for_segment(frame, segments, segment_id, method='mean_color'):
+    pixel_idxs = np.array(np.where(segments == segment_id))
+
+    if method == 'mean_color':
+        colors = frame[pixel_idxs]
+        return (colors * 1.0).mean(axis=0)
+    elif method == 'mean_coordinates':
+        return np.mean(pixel_idxs[0]) / frame.shape[0], np.mean(pixel_idxs[1]) / frame.shape[1]
+    elif method == 'mean_coordinates_and_mean_color':
+        colors = frame[pixel_idxs[0], pixel_idxs[1], :]
+        return (colors * 1.0).mean(axis=0), pixel_idxs.mean(axis=1) / frame.shape[:-1]
+    else:
+        raise NotImplementedError
+
+
+@jit(nopython=True, parallel=True)
+def get_attr_for_segment_v3(frame, segments, idxs, method='mean_color'):
+    binSize = np.zeros(len(idxs), dtype=np.int32)
+    for i in range(segments.shape[0]):
+        for j in range(segments.shape[1]):
+            binSize[segments[i, j]] += 1
+
+    pixel_idxs = [np.zeros((2, binSize[idx]), dtype=np.int32) for idx in idxs]
+    binPos = np.zeros(len(idxs), dtype=np.int32)
+    for y in range(segments.shape[0]):
+        for x in range(segments.shape[1]):
+            curBin = segments[y, x]
+            pixel_idxs[curBin][0, binPos[curBin]] = y
+            pixel_idxs[curBin][1, binPos[curBin]] = x
+            binPos[curBin] += 1
+
+    if method == 'mean_color':
+        colors_per_idx = np.zeros((len(idxs), 3))
+        for i, (ys, xs) in enumerate(pixel_idxs):
+            color_sum = np.zeros(3, dtype=np.int32)
+            for y, x in zip(ys, xs):
+                color_sum += frame[y, x]
+
+            color = color_sum / len(ys)
+
+            for c in range(len(color)):
+                colors_per_idx[i, c] = color[c]
+
+        return colors_per_idx
+    elif method == 'mean_coordinates':
+        coords_per_idx = np.zeros((len(idxs), 2))
+
+        for i, (ys, xs) in enumerate(pixel_idxs):
+            coords_per_idx[i] = ys.mean() / frame.shape[0], xs.mean() / frame.shape[1]
+
+        return coords_per_idx
+    elif method == 'mean_coordinates_and_mean_color':
+        colors_coords_per_idx = np.zeros((len(idxs), 5))
+        for i, (ys, xs) in enumerate(pixel_idxs):
+            color_sum = np.zeros(3, dtype=np.int32)
+            for y, x in zip(ys, xs):
+                color_sum += frame[y, x]
+
+            color = color_sum / len(ys)
+
+            colors_coords_per_idx[i, 0] = color[0]
+            colors_coords_per_idx[i, 1] = color[1]
+            colors_coords_per_idx[i, 2] = color[2]
+
+            colors_coords_per_idx[i, 3] = ys.mean() / frame.shape[0]
+            colors_coords_per_idx[i, 4] = xs.mean() / frame.shape[1]
+
+        return colors_coords_per_idx
+    else:
+        raise NotImplementedError
+
+
+# @jit(nopython=True, parallel=True)
+def get_edges_between_frames(sources, targets, k_nearest=5):
+    features_sources = stack(sources[:, 0])
+    features_targets = stack(targets[:, 0])
+    # features_sources = color.rgb2lab(features_sources)
+    # features_targets = color.rgb2lab(features_targets)
+    coordinates_sources = stack(sources[:, 1])
+    coordinates_targets = stack(targets[:, 1])
+
     features_distances = cdist(features_sources, features_targets)
     coordinates_distances = cdist(coordinates_sources, coordinates_targets)
 
-    return features_distances + alpha * coordinates_distances
+    nearest_neighbors = np.argsort(coordinates_distances, axis=-1)[:, :k_nearest]
+
+    color_dist_of_nearest_neighbors = features_distances.take(nearest_neighbors)
+
+    index_of_nearest_color = color_dist_of_nearest_neighbors.argmin(axis=-1)
+    index_of_nearest_color_and_neighbor = nearest_neighbors[range(len(nearest_neighbors)), index_of_nearest_color]
+    minimum_distances = color_dist_of_nearest_neighbors.min(axis=-1)
+    color_dist_threshold = minimum_distances.mean(axis=-1) + minimum_distances.std(axis=-1)
+    mask = minimum_distances < color_dist_threshold
+
+    return index_of_nearest_color_and_neighbor, mask
 
 
-def dist(coords1, coords2):
-    return np.linalg.norm(coords1 - coords2, ord=2)
+def only_coords(attrs, coords):
+    return coords
+
+
+def only_attrs(attrs, coords):
+    return attrs
+
+
+def concat(attrs, coords):
+    return np.concatenate([attrs, coords])
 
 
 def node_feature_retriever_definer(node_features_mode):
-    def only_coords(attrs, coords):
-        return coords
-
-    def only_attrs(attrs, coords):
-        return attrs
-
-    def concat(attrs, coords):
-        return np.concatenate([attrs, coords])
-
     if node_features_mode == 'only_coords':
         return only_coords
     elif node_features_mode == 'only_attrs':
@@ -143,58 +249,45 @@ def node_feature_retriever_definer(node_features_mode):
 
 
 def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_mode='concat'):
-    node_feature_retriever = node_feature_retriever_definer(node_features_mode)
-    last_layer_nodes = None
+    layer_nodes = [None] * clip.shape[0]
     parent_graph = DiGraph()
 
+    # Cluster Map
+    all_segments = [SlicAvx2(num_components=n_segments, compactness=compactness, num_threads=10).iterate(frame)
+                    for frame in clip]
+
     for i_frame, frame in enumerate(clip):
-        slic_model = SlicAvx2(num_components=n_segments, compactness=compactness, num_threads=8)
-        segments = slic_model.iterate(frame.contiguous().numpy().astype(np.uint8))  # Cluster Map
-        idxs = np.unique(segments)
+        segments = all_segments[i_frame]
+        idxs = unique(segments)
         if len(idxs) < 2:
-            last_layer_nodes = None
+            layer_nodes[i_frame] = None
             continue
 
         edges = get_adjacents_v2(segments)
-        node_attrs = {idx: get_attr_for_segment(frame, segments, idx, method='mean_color') for idx in idxs}
-        node_coordinates = {idx: get_attr_for_segment(frame, segments, idx, method='mean_coordinates') for idx in idxs}
-        current_layer_nodes = [(node_attrs[idx], node_coordinates[idx]) for idx in idxs]
+        superpixels_idxs = indices_for_segments(segments, len(idxs))
+        node_attrs_coordinates = [get_attr_for_segment_v2(frame,
+                                                          *superpixels_idxs[idx],
+                                                          method='mean_coordinates_and_mean_color')
+                                  for idx in idxs]
 
-        for idx in idxs:
-            node_name = f"level_{i_frame}_segment_{idx}"
+        nodes = [((i_frame, idx), {'x': node_attrs_coordinates[idx][0]}) for idx in idxs]
+        parent_graph.add_nodes_from(nodes)
 
-            parent_graph.add_node(node_name, x=node_feature_retriever(node_attrs[idx], node_coordinates[idx]))
-
-        for edge in (list(z) for z in edges):
-            u = f"level_{i_frame}_segment_{edge[0]}"
-            v = f"level_{i_frame}_segment_{edge[1]}"
-            d = dist(node_coordinates[u], node_coordinates[v])
+        for u, v in edges:
+            d = norm(node_attrs_coordinates[u][1] - node_attrs_coordinates[v][1], ord=2)
             parent_graph.add_edge(u, v, edge_attr=d)
             parent_graph.add_edge(v, u, edge_attr=d)
 
-        if last_layer_nodes is not None:
-            feature_distances = get_distances(last_layer_nodes, current_layer_nodes, alpha=4000)
-            nearest_neighbors = np.argmin(feature_distances, axis=1)
-            dists = feature_distances[list(range(feature_distances.shape[0])), nearest_neighbors]
-            mean_ = np.mean(dists)
-            std = np.std(dists)
-            nearest_neighbors = nearest_neighbors[dists < mean_ + std]
-            # plt.figure()
-            # plt.hist(dists, bins=100)
-            # plt.axvline(mean_+std, color='r')
-            # plt.show()
-            for source, neighbor in enumerate(nearest_neighbors):
-                if f"level_{i_frame - 1}_segment_{source}" not in parent_graph.nodes:
-                    raise Exception
-                if f"level_{i_frame}_segment_{neighbor}" not in parent_graph.nodes:
-                    raise Exception
+        layer_nodes[i_frame] = node_attrs_coordinates
 
-                d = dist(last_layer_nodes[source][1], current_layer_nodes[neighbor][1])
-                parent_graph.add_edge(f"level_{i_frame - 1}_segment_{source}",
-                                      f"level_{i_frame}_segment_{neighbor}",
-                                      edge_attr=d)
-
-        last_layer_nodes = current_layer_nodes
+    for idx_prev, idx_cur, prev_nodes, cur_nodes in zip(range(0, len(layer_nodes) - 1), range(1, len(layer_nodes)),
+                                                        layer_nodes[:-1], layer_nodes[1:]):
+        if prev_nodes is not None:
+            nearest_neighbors, mask = get_edges_between_frames(asarray(prev_nodes), asarray(cur_nodes), k_nearest=10)
+            edges = [((idx_prev, source), (idx_cur, neighbor),
+                      {'edge_attr': norm(prev_nodes[source][1] - cur_nodes[neighbor][1], ord=2)})
+                     for source, neighbor in enumerate(nearest_neighbors) if mask[source]]
+            parent_graph.add_edges_from(edges)
 
     if parent_graph.number_of_nodes() == 0:
         raise EmptyGraphException
@@ -203,25 +296,29 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
 
 
 class VideoClipToSuperPixelFlowGraph:
-    def __init__(self, n_segments=30, compactness=10):
+    def __init__(self, n_segments=80, compactness=10):
         self.n_segments = n_segments
         self.compactness = compactness
 
     def __call__(self, clip):
         # clip = torch.transpose(clip, dim0=1, dim1=2)
 
-        # profiler = cProfile.Profile()
-        # profiler.enable()
-        res = create_superpixels_flow_graph(clip, self.n_segments, self.compactness)
-        # profiler.disable()
-        # profiler.print_stats(sort='tottime')
+        profiler = cProfile.Profile()
+        profiler.enable()
+        res = create_superpixels_flow_graph(clip.contiguous().numpy().astype(np.uint8), self.n_segments,
+                                            self.compactness)
+        profiler.disable()
+        profiler.print_stats(sort='tottime')
 
         return res
 
 
 class NetworkxToGeometric:
     def __call__(self, g):
-        return from_networkx(g)
+        start_time = time.time()
+        g = from_networkx(g)
+        print(f"TIME: {time.time() - start_time}")
+        return g
 
 
 if __name__ == '__main__':

@@ -1,3 +1,4 @@
+import cProfile
 import logging
 import random
 
@@ -64,6 +65,8 @@ class Kinetics(VisionDataset):
         if path.exists(precomputed_metadata_path):
             _precomputed_metadata = torch.load(precomputed_metadata_path)
             flag_metadata_exists = True
+
+        logging.info("Preparing VideoClips...")
         self.video_clips = VideoClips(
             video_list,
             self.total_clip_duration_in_frames,
@@ -77,6 +80,8 @@ class Kinetics(VisionDataset):
             _audio_samples=_audio_samples,
             _audio_channels=_audio_channels,
         )
+
+        logging.info("VideoClips ready!")
         self.transform = transform
 
         if not flag_metadata_exists:
@@ -105,8 +110,10 @@ class Kinetics(VisionDataset):
         video = (video * 1.0).to(torch.float32)
         label = self.samples[video_idx][1]
 
+
         if self.transform is not None:
             video = self.transform(video)
+
 
         self.cached_graphs[idx] = video, label
 

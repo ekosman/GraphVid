@@ -99,7 +99,7 @@ class DefaultModelCallback(Callback):
             loss_string = "   ".join([f"{loss_name} loss: {loss_value}" for loss_name, loss_value in zip(self.loss_names, loss)])
 
             logging.info(
-                f"Epoch {self.epoch}/{self.epochs}      Iteration {epoch_iteration}/{self.epoch_iterations}    {loss_string}    Time: {average_time} seconds/iteration")
+                f"Epoch {self.epoch + 1}/{self.epochs}      Iteration {epoch_iteration + 1}/{self.epoch_iterations}    {loss_string}    Time: {average_time} seconds/iteration")
 
     def on_epoch_end(self, loss):
         for loss_list, loss_value in zip(self.train_losses, loss):
@@ -110,7 +110,7 @@ class DefaultModelCallback(Callback):
 
     def on_evaluation_step(self, iteration, model_outputs, targets, loss):
         if iteration % self.log_every == 0:
-            logging.info(f"Iteration {iteration}/{self.val_iterations}")
+            logging.info(f"Iteration {iteration + 1}/{self.val_iterations}")
 
     def on_evaluation_end(self):
         pass

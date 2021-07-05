@@ -2,6 +2,7 @@ import argparse
 import logging
 import warnings
 from os import path
+from tqdm import tqdm
 
 import torch
 from torch.nn import CrossEntropyLoss
@@ -49,10 +50,12 @@ def train_video_recognition(
         **vars(args),
     )
 
+    [d for d in tqdm(train_loader)]
+
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
-                            num_workers=8,
+                            num_workers=0,
                             pin_memory=True)
 
     eval_loader = Kinetics(
@@ -61,23 +64,25 @@ def train_video_recognition(
         **vars(args),
     )
 
+    [d for d in tqdm(eval_loader)]
+
     eval_iter = DataLoader(eval_loader,
                            batch_size=args.batch_size,
                            shuffle=False,
-                           num_workers=16,
+                           num_workers=0,
                            pin_memory=True)
 
-    test_loader = Kinetics(
-        dataset_path=args.dataset_path_test,
-        transform=build_transforms(),
-        **vars(args),
-    )
+    # test_loader = Kinetics(
+    #     dataset_path=args.dataset_path_test,
+    #     transform=build_transforms(),
+    #     **vars(args),
+    # )
 
-    test_iter = DataLoader(test_loader,
-                           batch_size=args.batch_size,
-                           shuffle=False,
-                           num_workers=16,
-                           pin_memory=True)
+    # test_iter = DataLoader(test_loader,
+    #                        batch_size=args.batch_size,
+    #                        shuffle=False,
+    #                        num_workers=16,
+    #                        pin_memory=True)
 
     # Create the model
     if model_path is None or not path.exists(model_path):
@@ -104,13 +109,13 @@ def train_video_recognition(
                                                  loss_names=losses_names))
 
     model.add_evaluation_metric(AccuracyTopK(k=1))
-    model.add_evaluation_metric(AccuracyTopK(k=5))
+    # model.add_evaluation_metric(AccuracyTopK(k=5))
 
     if args.epochs != 0:
         model.fit(
             train_iter=train_iter,
             eval_iter=eval_iter,
-            test_iter=test_iter,
+            test_iter=None,#test_iter,
             criterion=criterion,
             optimizer=optimizer,
             epochs=args.epochs,
