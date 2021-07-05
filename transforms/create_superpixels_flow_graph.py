@@ -4,6 +4,9 @@ import time
 from itertools import product
 from os import path
 
+import torch
+from torch import tensor
+
 import cv2
 import numpy as np
 from fast_slic.avx2 import SlicAvx2
@@ -12,6 +15,7 @@ from numba import jit, njit, prange
 from numpy.linalg import norm
 from numpy import unique, stack, asarray, concatenate
 from scipy.spatial.distance import cdist
+from torch_geometric.data import Data
 from torch_geometric.utils import from_networkx
 
 
@@ -249,8 +253,10 @@ def node_feature_retriever_definer(node_features_mode):
 
 
 def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_mode='concat'):
-    layer_nodes = [None] * clip.shape[0]
-    parent_graph = DiGraph()
+    layer_nodes = [torch.tensor([])] * clip.shape[0]
+    layer_edges = [torch.tensor([])] * clip.shape[0]
+    layer_edge_attrs = [torch.tensor([])] * clip.shape[0]
+    # parent_graph = DiGraph()
 
     # Cluster Map
     all_segments = [SlicAvx2(num_components=n_segments, compactness=compactness, num_threads=10).iterate(frame)
@@ -271,12 +277,14 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
                                   for idx in idxs]
 
         nodes = [((i_frame, idx), {'x': node_attrs_coordinates[idx][0]}) for idx in idxs]
-        parent_graph.add_nodes_from(nodes)
+        # parent_graph.add_nodes_from(nodes)
 
-        for u, v in edges:
-            d = norm(node_attrs_coordinates[u][1] - node_attrs_coordinates[v][1], ord=2)
-            parent_graph.add_edge(u, v, edge_attr=d)
-            parent_graph.add_edge(v, u, edge_attr=d)
+        layer_edges[i_frame] = tensor([[u, v] for u, v in edges])
+        layer_edge_attrs[i_frame] = tensor([norm(node_attrs_coordinates[u][1] - node_attrs_coordinates[v][1], ord=2) for u, v in edges])
+        # for u, v in edges:
+        #     d = norm(node_attrs_coordinates[u][1] - node_attrs_coordinates[v][1], ord=2)
+        #     parent_graph.add_edge(u, v, edge_attr=d)
+        #     parent_graph.add_edge(v, u, edge_attr=d)
 
         layer_nodes[i_frame] = node_attrs_coordinates
 
@@ -287,12 +295,23 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
             edges = [((idx_prev, source), (idx_cur, neighbor),
                       {'edge_attr': norm(prev_nodes[source][1] - cur_nodes[neighbor][1], ord=2)})
                      for source, neighbor in enumerate(nearest_neighbors) if mask[source]]
-            parent_graph.add_edges_from(edges)
+            # parent_graph.add_edges_from(edges)
 
-    if parent_graph.number_of_nodes() == 0:
+    node_indices = np.cumsum([0] + [len(x) if x is not None else 0 for x in layer_nodes[:-1]])
+    x = torch.stack([tensor(node[0]) for nodes in layer_nodes for node in nodes])
+    edge_attr = torch.cat(layer_edge_attrs)
+    edge_index = torch.stack([idxs + n_nodes for idxs, n_nodes in zip(layer_edges, node_indices)])
+
+    # TODO: add connevticity between frames
+
+    res = Data(x=x,
+               edge_index=edge_index,
+               edge_attr=edge_attr,
+               )
+    if res.num_nodes == 0:
         raise EmptyGraphException
 
-    return parent_graph
+    return res
 
 
 class VideoClipToSuperPixelFlowGraph:
