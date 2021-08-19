@@ -3,6 +3,7 @@ from network.SimpleGCN import SimpleGCN
 from network.gat_sage import GATSage
 from network.mlp_node_prediction import MLP
 from network.pna import PNA
+from network.relational import DynamicGCN
 from network.sage import SAGE
 
 
@@ -16,6 +17,8 @@ def get_model(num_features, num_classes, arch):
     """
     if arch == 'sage':
         model = SAGE(num_features, 256, num_classes)
+    elif arch == 'dynamic_gcn':
+        model = DynamicGCN(num_features, 256, num_classes)
     elif arch == 'gat':
         model = GATSage(num_features, num_classes)
     elif arch == 'mlp':

@@ -19,8 +19,8 @@ def build_transforms():
         # transforms_video.RandomResizedCropVideo(size=(video_height, video_width), crop=video_width),
         # transforms_video.NormalizeVideo(mean=mean, std=std)
         RandomResizedCropVideo(size=(480, 640),),
-        VideoClipToSuperPixelFlowGraph(),
-        NetworkxToGeometric(),
+        VideoClipToSuperPixelFlowGraph(50),
+        # NetworkxToGeometric(),
     ])
 
     return res

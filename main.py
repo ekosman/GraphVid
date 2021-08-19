@@ -26,14 +26,14 @@ def draw_frame(frame, segments):
 if __name__ == '__main__':
     # img = astronaut()
     clip_length = 16
-    cap = cv2.VideoCapture(path.join(r'/media/eitank/disk2T/Datasets/kinetics-downloader/dataset/train/arranging_flowers/0a8l_Pou_C8.mp4'))
+    cap = cv2.VideoCapture(path.join(r'/home/eitank/Downloads/WhatsApp Video 2021-07-19 at 16.22.43.mp4'))
 
     # Read until video is completed
     clip = []
     while cap.isOpened():
         # Capture frame-by-frame
         ret, frame = cap.read()
-        frame = cv2.resize(frame, fx=0.5, fy=0.5, dsize=None)
+        frame = cv2.resize(frame, fx=1, fy=1, dsize=None)
 
         # Display the resulting frame
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             continue
 
         clip = np.stack(clip)
-        segments = slic(clip, n_segments=600, compactness=10)
+        segments = slic(clip, n_segments=500, compactness=8)
 
         idxs = np.unique(segments)
         for idx in idxs:

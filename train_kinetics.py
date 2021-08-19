@@ -3,7 +3,7 @@ import logging
 import warnings
 from os import path
 from tqdm import tqdm
-
+import multiprocessing
 import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
@@ -22,7 +22,8 @@ from utils.PackageUtils.callback_utils import DefaultModelCallback, TensorBoardC
 from utils.PackageUtils.logging import OutputDirs
 from utils.logging_utils import get_clearml_logger
 from utils.transforms_utils import build_transforms
-
+import warnings
+warnings.filterwarnings("ignore")
 """
 
 """
@@ -50,12 +51,14 @@ def train_video_recognition(
         **vars(args),
     )
 
-    [d for d in tqdm(train_loader)]
+    # pool = multiprocessing.Pool(processes=5)
+    # pool.map(train_loader.__getitem__, range(len(train_loader)))
+    # [d for d in tqdm(train_loader)]
 
     train_iter = DataLoader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
-                            num_workers=0,
+                            num_workers=args.num_workers,
                             pin_memory=True)
 
     eval_loader = Kinetics(
@@ -64,12 +67,12 @@ def train_video_recognition(
         **vars(args),
     )
 
-    [d for d in tqdm(eval_loader)]
+    # [d for d in tqdm(eval_loader)]
 
     eval_iter = DataLoader(eval_loader,
                            batch_size=args.batch_size,
                            shuffle=False,
-                           num_workers=0,
+                           num_workers=args.num_workers,
                            pin_memory=True)
 
     # test_loader = Kinetics(
@@ -81,12 +84,12 @@ def train_video_recognition(
     # test_iter = DataLoader(test_loader,
     #                        batch_size=args.batch_size,
     #                        shuffle=False,
-    #                        num_workers=16,
+    #                        num_workers=args.num_workers,
     #                        pin_memory=True)
 
     # Create the model
     if model_path is None or not path.exists(model_path):
-        model = get_model(num_features=5, num_classes=train_loader.num_classes, arch=args.model_type)
+        model = get_model(num_features=3, num_classes=train_loader.num_classes, arch=args.model_type)
         model = TorchModel(model)
     else:
         model = TorchModel.load_model(model_path)
@@ -109,7 +112,7 @@ def train_video_recognition(
                                                  loss_names=losses_names))
 
     model.add_evaluation_metric(AccuracyTopK(k=1))
-    # model.add_evaluation_metric(AccuracyTopK(k=5))
+    model.add_evaluation_metric(AccuracyTopK(k=5))
 
     if args.epochs != 0:
         model.fit(
@@ -137,17 +140,15 @@ def get_args():
                         type=int,
                         help=r'perform evaluation every specified amount of epochs. If the evaluation is expensive, '
                              r'you probably want to choose a high value for this')
-    parser.add_argument('--log_every',
-                        default=1,
-                        type=int,
-                        help='logging intervals while training (iterations)')
+    parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
+    parser.add_argument('--num_workers', default=6, type=int, help='')  # 7
     parser.add_argument('--save_every', default=10, type=int, help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
     parser.add_argument('--frames_per_clip', default=16, type=int, help=r'')
     parser.add_argument('--model_type',
                         default='gcn',
-                        choices=['gcn', 'gat', 'simple_gcn', 'pna'],
+                        # choices=['gcn', 'gat', 'simple_gcn', 'pna'],
                         type=str,
                         help='which model to use for training')
     parser.add_argument('--model_path',
