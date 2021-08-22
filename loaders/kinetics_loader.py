@@ -110,10 +110,8 @@ class Kinetics(VisionDataset):
         video = (video * 1.0).to(torch.float32)
         label = self.samples[video_idx][1]
 
-
         if self.transform is not None:
             video = self.transform(video)
-
 
         self.cached_graphs[idx] = video, label
 

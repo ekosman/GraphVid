@@ -2,13 +2,11 @@ import argparse
 import logging
 import warnings
 from os import path
-from tqdm import tqdm
-import multiprocessing
+
 import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.data import DataLoader
-from torchsummary import summary
 
 from loaders.kinetics_loader import Kinetics
 from losses.evaluation_metrics import AccuracyTopK
@@ -22,7 +20,7 @@ from utils.PackageUtils.callback_utils import DefaultModelCallback, TensorBoardC
 from utils.PackageUtils.logging import OutputDirs
 from utils.logging_utils import get_clearml_logger
 from utils.transforms_utils import build_transforms
-import warnings
+
 warnings.filterwarnings("ignore")
 """
 
@@ -75,17 +73,17 @@ def train_video_recognition(
                            num_workers=args.num_workers,
                            pin_memory=True)
 
-    # test_loader = Kinetics(
-    #     dataset_path=args.dataset_path_test,
-    #     transform=build_transforms(),
-    #     **vars(args),
-    # )
+    test_loader = Kinetics(
+        dataset_path=args.dataset_path_test,
+        transform=build_transforms(),
+        **vars(args),
+    )
 
-    # test_iter = DataLoader(test_loader,
-    #                        batch_size=args.batch_size,
-    #                        shuffle=False,
-    #                        num_workers=args.num_workers,
-    #                        pin_memory=True)
+    test_iter = DataLoader(test_loader,
+                           batch_size=args.batch_size,
+                           shuffle=False,
+                           num_workers=args.num_workers,
+                           pin_memory=True)
 
     # Create the model
     if model_path is None or not path.exists(model_path):
@@ -118,7 +116,7 @@ def train_video_recognition(
         model.fit(
             train_iter=train_iter,
             eval_iter=eval_iter,
-            test_iter=None,#test_iter,
+            test_iter=test_iter,#test_iter,
             criterion=criterion,
             optimizer=optimizer,
             epochs=args.epochs,
