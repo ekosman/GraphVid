@@ -1,5 +1,7 @@
 import logging
+import os
 from os import path
+import pandas as pd
 
 import torch
 from torchvision.datasets.folder import make_dataset
@@ -9,7 +11,7 @@ from torchvision.datasets.video_utils import VideoClips
 from loaders.base_video_dataset import CachingVideoDataset
 
 
-class Kinetics(CachingVideoDataset):
+class Charades(CachingVideoDataset):
     """
     `Kinetics <https://deepmind.com/research/open-source/open-source-datasets/kinetics/>`_
     dataset.
@@ -43,21 +45,27 @@ class Kinetics(CachingVideoDataset):
             - label (int): class of the video clip
     """
 
-    def __init__(self, dataset_path, frames_per_clip=16, step_between_clips=8, steps_between_frames=1,
+    def __init__(self, dataset_path, phase='train', frames_per_clip=16, step_between_clips=8, steps_between_frames=1,
                  extensions=('avi', 'mp4', 'mkv'), transform=None, _precomputed_metadata=None,
                  num_workers=8, _video_width=0, _video_height=0,
                  _video_min_dimension=0, _audio_samples=0, _audio_channels=0, **kwargs):
-        super(Kinetics, self).__init__(kwargs.get('cache_root'))
+        super(Charades, self).__init__(kwargs.get('cache_root'))
+
+        self.annotations_path = path.join(dataset_path, 'annotations', f'Charades_v1_{phase}.csv')
+        self.annotations = pd.read_csv(self.annotations_path)
 
         self.root = dataset_path
         self.show_errors = False
-        classes = list(sorted(list_dir(dataset_path)))
+
+        with open(path.join(dataset_path, 'annotations', 'Charades_v1_classes.txt'), 'r') as fp:
+            lines = fp.read().splitlines(keepends=False)
+        classes = [line.split(' ')[0] for line in lines
+                   ]
         class_to_idx = {classes[i]: i for i in range(len(classes))}
-        self.samples = make_dataset(self.root, class_to_idx, extensions, is_valid_file=None)
         self.classes = classes
         self.steps_between_frames = steps_between_frames
         self.total_clip_duration_in_frames = frames_per_clip * steps_between_frames
-        video_list = [x[0] for x in self.samples]
+        video_list = [path.join(dataset_path, 'videos', video) for video in os.listdir(path.join(dataset_path, 'videos'))]
         precomputed_metadata_path = path.join(dataset_path, 'metadata.pt')
         flag_metadata_exists = False
         if path.exists(precomputed_metadata_path):
@@ -105,3 +113,8 @@ class Kinetics(CachingVideoDataset):
         if video is None or label is None:
             pass
         return video, label
+
+
+if __name__ == '__main__':
+    dataset = Charades(r'/media/eitank/disk2T/Datasets/Charades', phase='train', cache_root=None)
+    dataset[0]

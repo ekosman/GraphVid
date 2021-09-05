@@ -176,14 +176,16 @@ class TorchModel(nn.Module):
                 logging.info(f"Evaluating after epoch {epoch}")
                 val_loss = self.evaluate(criterion=criterion,
                                          data_iter=eval_iter,
-                                         batch_splitter=batch_splitter, )
+                                         batch_splitter=batch_splitter,
+                                         phase='val')
 
             test_loss = None
             if test_iter and evaluate_every and epoch % evaluate_every == 0:
                 logging.info(f"Testing after epoch {epoch}")
                 test_loss = self.evaluate(criterion=criterion,
                                           data_iter=test_iter,
-                                          batch_splitter=batch_splitter, )
+                                          batch_splitter=batch_splitter,
+                                          phase='test')
 
             self.notify_callbacks('on_training_iteration_end', train_loss, val_loss, test_loss)
 
@@ -192,7 +194,7 @@ class TorchModel(nn.Module):
         if network_model_path_base:
             self.save(os.path.join(network_model_path_base, f'epoch_{epoch + 1}.pt'))
 
-    def evaluate(self, criterion, data_iter, batch_splitter=None):
+    def evaluate(self, criterion, data_iter, batch_splitter=None, phase='val'):
         """
         Evaluates the model
         Args:
@@ -252,7 +254,7 @@ class TorchModel(nn.Module):
             loss = total_loss / len(data_iter)
 
         for metric in self.evaluation_metrics:
-            logging.info(f"{metric.name}: {metric(all_targets, all_outputs)}")
+            logging.info(f"{metric.name}: {metric(all_targets, all_outputs, phase)}")
 
         self.notify_callbacks('on_evaluation_end')
         return loss
@@ -305,7 +307,7 @@ class TorchModel(nn.Module):
                                   )
 
             for metric in self.evaluation_metrics:
-                logging.info(f"{metric.name}: {metric(targets.detach().cpu(), outputs.detach().cpu())}")
+                logging.info(f"{metric.name}: {metric(targets.detach().cpu(), outputs.detach().cpu(), 'train')}")
 
             self.iteration += 1
 

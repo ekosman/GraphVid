@@ -41,7 +41,10 @@ def log_args_description(args):
 
 
 def get_clearml_logger(project_name, task_name, tags=None):
-    task = Task.init(project_name=project_name, task_name=task_name, tags=tags)
+    task = Task.init(project_name=project_name,
+                     task_name=task_name,
+                     tags=tags,
+                     auto_connect_frameworks={'pytorch': False})
     logger = task.get_logger()
     return logger
 

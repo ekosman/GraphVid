@@ -22,9 +22,6 @@ from utils.logging_utils import get_clearml_logger
 from utils.transforms_utils import build_transforms
 
 warnings.filterwarnings("ignore")
-"""
-
-"""
 
 
 def classification_batch_splitter(batch):
@@ -46,6 +43,7 @@ def train_video_recognition(
     train_loader = Kinetics(
         dataset_path=args.dataset_path_train,
         transform=build_transforms(),
+        cache_root=r'/media/eitank/disk2T/Datasets/kinetics400/cache/train',
         **vars(args),
     )
 
@@ -62,6 +60,7 @@ def train_video_recognition(
     eval_loader = Kinetics(
         dataset_path=args.dataset_path_validation,
         transform=build_transforms(),
+        cache_root=r'/media/eitank/disk2T/Datasets/kinetics400/cache/val',
         **vars(args),
     )
 
@@ -76,6 +75,7 @@ def train_video_recognition(
     test_loader = Kinetics(
         dataset_path=args.dataset_path_test,
         transform=build_transforms(),
+        cache_root=r'/media/eitank/disk2T/Datasets/kinetics400/cache/test',
         **vars(args),
     )
 
@@ -109,8 +109,8 @@ def train_video_recognition(
                                                  save_every=args.save_every,
                                                  loss_names=losses_names))
 
-    model.add_evaluation_metric(AccuracyTopK(k=1))
-    model.add_evaluation_metric(AccuracyTopK(k=5))
+    model.add_evaluation_metric(AccuracyTopK(k=1, tb_writer=tb_writer))
+    model.add_evaluation_metric(AccuracyTopK(k=5, tb_writer=tb_writer))
 
     if args.epochs != 0:
         model.fit(
@@ -139,7 +139,7 @@ def get_args():
                         help=r'perform evaluation every specified amount of epochs. If the evaluation is expensive, '
                              r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
-    parser.add_argument('--num_workers', default=6, type=int, help='')  # 7
+    parser.add_argument('--num_workers', default=7, type=int, help='')  # 6
     parser.add_argument('--save_every', default=10, type=int, help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     clearml_logger = None if args.disable_clearml_logger \
         else get_clearml_logger(project_name="GraphVid",
                                 task_name=get_time_str(),
-                                tags=tags)
+                                tags=tags,)
 
     logging.info(f"Using device {args.device}")
 

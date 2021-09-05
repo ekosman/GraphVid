@@ -1,0 +1,114 @@
+import logging
+import os
+import random
+from abc import ABC, abstractmethod
+from os import path
+
+import torch
+
+from transforms.create_superpixels_flow_graph import EmptyGraphException
+
+
+class BaseVideoDataset(ABC):
+    """
+    This dataset consider every video as a collection of video clips of fixed size, specified
+    by ``frames_per_clip``, where the step in frames between each clip is given by
+    ``step_between_clips``.
+
+    To give an example, for 2 videos with 10 and 15 frames respectively, if ``frames_per_clip=5``
+    and ``step_between_clips=5``, the dataset size will be (2 + 3) = 5, where the first two
+    elements will come from video 1, and the next three elements from video 2.
+    Note that we drop clips which do not have exactly ``frames_per_clip`` elements, so not all
+    frames in a video might be present.
+
+    Internally, it uses a VideoClips object to handle clip creation.
+
+    Returns:
+        tuple: A 3-tuple with the following entries:
+
+            - video (Tensor[T, H, W, C]): the `T` video frames
+            - audio(Tensor[K, L]): the audio frames, where `K` is the number of channels
+              and `L` is the number of points
+            - label (int): class of the video clip
+    """
+
+    def __init__(self, **kwargs):
+        super(BaseVideoDataset, self).__init__()
+        self.classes = []
+        self.video_clips = None
+        self.show_errors = None
+
+    @property
+    def num_classes(self):
+        return len(self.classes)
+
+    @property
+    def metadata(self):
+        return self.video_clips.metadata
+
+    def __len__(self):
+        return self.video_clips.num_clips()
+
+    @abstractmethod
+    def get_item_aux(self, idx):
+        pass
+
+    def __getitem__(self, idx):
+        """
+        Method to access the i'th sample of the dataset
+        Args:
+            idx: the sample index
+
+        Returns: the i'th sample of this dataset
+        """
+        succ = False
+        while not succ:
+            try:
+                data = self.get_item_aux(idx)
+                succ = True
+            except (EmptyGraphException, AssertionError) as e:
+                idx = random.randint(0, len(self) - 1)
+
+                if self.show_errors:
+                    logging.warning(e)
+
+        return data
+
+i=1
+class CachingVideoDataset(BaseVideoDataset, ABC):
+    def __init__(self, cache_root, **kwargs):
+        super(CachingVideoDataset, self).__init__()
+        self.cache_root = cache_root
+        try:
+            if cache_root is not None:
+                os.makedirs(cache_root, exist_ok=True)
+        except Exception as e:
+            logging.info(e)
+            raise Exception
+
+    def get_item_properties(self, item):
+        """
+        Returns video name and clip idx
+        :param item:
+        :return:
+        """
+        video_idx, clip_idx = self.video_clips.get_clip_location(item)
+        video_path = self.video_clips.video_paths[video_idx]
+        _, video_name = video_path.split(os.sep)[-2:]
+        video_name = video_name.split('.')[0]
+        return video_name, clip_idx
+
+    def __getitem__(self, item):
+        video_name, clip_idx = self.get_item_properties(item)
+        dump_path = path.join(self.cache_root, f"{video_name}_clip_{clip_idx}.file")
+        if self.cache_root is not None:
+            if path.exists(dump_path):
+                data = torch.load(dump_path)
+            else:
+                data = super(CachingVideoDataset, self).__getitem__(item)
+                torch.save(data, dump_path)
+
+        global i
+        print(i)
+        i += 1
+        return data
