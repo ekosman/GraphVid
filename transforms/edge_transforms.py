@@ -7,6 +7,9 @@ from transforms.create_superpixels_flow_graph import SPATIAL, TEMPORAL
 
 class AdditiveGaussianEdgeNoise:
     def __init__(self, sigma=0.05):
+        """
+        :param sigma: standard deviation of the added normal noise
+        """
         self.sigma = sigma
 
     def __call__(self, g):
@@ -16,6 +19,9 @@ class AdditiveGaussianEdgeNoise:
 
 class RandomSpatialEdgesRemoval:
     def __init__(self, p=0.8):
+        """
+        :param p: the probability of keeping a node
+        """
         self.p = p
 
     def __call__(self, g):
