@@ -28,19 +28,10 @@ class RandomNodeRemoval:
     def __call__(self, g):
         n_nodes = len(g.x)
         keep_nodes = torch.tensor(sorted(np.random.choice(n_nodes, int(n_nodes * self.p), replace=False)))
-        # edges_from = 1 - (g.edge_index[0, :].view(-1, 1) == removed_nodes.view(1, -1)).sum(dim=1)
-        # edges_to = 1 - (g.edge_index[1, :].view(-1, 1) == removed_nodes.view(1, -1)).sum(dim=1)
-        # edges_to_keep = torch.clip(edges_from * edges_to, 0, 1)
-        # edge_index = g.edge_index[:, edges_to_keep == 1]
-        # edge_attr = g.edge_attr[edges_to_keep == 1]
-        # edge_type = g.edge_type[edges_to_keep == 1]
-        # edge_index, edge_attr, mask = remove_isolated_nodes(edge_index=edge_index, edge_attr=edge_attr, num_nodes=n_nodes)
-        # g.x = g.x[mask]
-        # g.edge_index = edge_index
-        # g.edge_attr = edge_attr
-        # g.edge_type = edge_type
         edge_index, edge_attr = subgraph(keep_nodes, g.edge_index, g.edge_attr, relabel_nodes=True, num_nodes=n_nodes)
         g.x = g.x[keep_nodes]
+        g.edge_index = edge_index
+        g.edge_attr = edge_attr
         return g
 
 
