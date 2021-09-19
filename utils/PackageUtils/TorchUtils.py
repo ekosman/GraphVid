@@ -9,6 +9,7 @@ import time
 import torch
 import torch.nn as nn
 import torchsummary
+from torch_geometric.nn import DataParallel
 
 BatchContent = collections.namedtuple('BatchContent', 'inputs targets')
 
@@ -102,8 +103,8 @@ class TorchModel(nn.Module):
         Transfers the model to data parallel mode
         """
         self.is_data_parallel = True
-        if not isinstance(self.model, torch.nn.DataParallel):
-            self.model = torch.nn.DataParallel(self.model, device_ids=[0, 1])
+        if not isinstance(self.model, DataParallel):
+            self.model = DataParallel(self.model, device_ids=[0, 1])
 
         return self
 
@@ -349,3 +350,19 @@ class TorchModel(nn.Module):
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
+
+
+def compress_data(data):
+    data.edge_attr = data.edge_attr.to(torch.float16)
+    data.edge_index = data.edge_index.to(torch.int16)
+    data.edge_type = data.edge_type.to(torch.int8)
+    data.x = data.x.to(torch.float16)
+    return data
+
+
+def uncompress_data(data):
+    # data.edge_attr = data.edge_attr.to(torch.float16)
+    data.edge_index = data.edge_index.to(torch.int64)
+    # data.edge_type = data.edge_type.to(torch.bool)
+    # data.x = data.x.to(torch.float16)
+    return data

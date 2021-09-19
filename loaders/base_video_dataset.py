@@ -3,10 +3,12 @@ import os
 import random
 from abc import ABC, abstractmethod
 from os import path
-
 import torch
+from collections import Mapping, Container
+from sys import getsizeof
 
 from transforms.create_superpixels_flow_graph import EmptyGraphException
+from utils.PackageUtils.TorchUtils import compress_data, uncompress_data
 
 
 class BaseVideoDataset(ABC):
@@ -74,6 +76,11 @@ class BaseVideoDataset(ABC):
 
         return data
 
+
+def size(tensor):
+    return tensor.element_size() * tensor.nelement()
+
+
 i=1
 class CachingVideoDataset(BaseVideoDataset, ABC):
     def __init__(self, cache_root, **kwargs):
@@ -99,16 +106,31 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         return video_name, clip_idx
 
     def __getitem__(self, item):
+        global i
         video_name, clip_idx = self.get_item_properties(item)
         dump_path = path.join(self.cache_root, f"{video_name}_clip_{clip_idx}.file")
+        loaded = False
         if self.cache_root is not None:
             if path.exists(dump_path):
-                data = torch.load(dump_path)
-            else:
-                data = super(CachingVideoDataset, self).__getitem__(item)
-                torch.save(data, dump_path)
+                try:
+                    data = torch.load(dump_path)
+                    loaded = True
+                except (EOFError, RuntimeError) as e:
+                    pass
 
-        global i
+        if not loaded:
+            data = super(CachingVideoDataset, self).__getitem__(item)
+
+        data, label = data
+        data = compress_data(data), label
+        torch.save(data, dump_path)  # TODO indent
+
         print(i)
         i += 1
+
+        data, label = data
+        data = uncompress_data(data), label
+
         return data
+
+

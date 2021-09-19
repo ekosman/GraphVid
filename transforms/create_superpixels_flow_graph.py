@@ -4,6 +4,8 @@ import time
 from itertools import product
 from os import path
 from enum import Enum
+
+import matplotlib.pyplot as plt
 import torch
 from torch import tensor
 
@@ -221,8 +223,11 @@ def get_attr_for_segment_v3(frame, segments, idxs, method='mean_color'):
 
 # @jit(nopython=True, parallel=True)
 def get_edges_between_frames(sources, targets, k_nearest=5):
-    features_sources = stack(sources[:, 0])
-    features_targets = stack(targets[:, 0])
+    try:
+        features_sources = stack(sources[:, 0])
+        features_targets = stack(targets[:, 0])
+    except Exception as e:
+        pass
     # features_sources = color.rgb2lab(features_sources)
     # features_targets = color.rgb2lab(features_targets)
     coordinates_sources = stack(sources[:, 1])
@@ -283,6 +288,9 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
         segments = all_segments[i_frame]
         idxs = unique(segments)
         if len(idxs) < 2:
+            # plt.Figure()
+            # plt.imshow(frame)
+            # plt.show()
             layer_nodes[i_frame] = None
             continue
 
@@ -309,7 +317,7 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
 
     for idx_prev, idx_cur, prev_nodes, cur_nodes in zip(range(0, len(layer_nodes) - 1), range(1, len(layer_nodes)),
                                                         layer_nodes[:-1], layer_nodes[1:]):
-        if prev_nodes is not None:
+        if prev_nodes is not None and cur_nodes is not None:
             nearest_neighbors, mask = get_edges_between_frames(asarray(prev_nodes), asarray(cur_nodes), k_nearest=10)
             edges = [((idx_prev, source), (idx_cur, neighbor)) for source, neighbor in enumerate(nearest_neighbors) if mask[source]]
 
@@ -319,7 +327,7 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
             temporal_edge_attrs += attrs
 
     node_indices = np.cumsum([0] + [len(x) if x is not None else 0 for x in layer_nodes[:-1]])
-    x = torch.stack([tensor(node[0]) for nodes in layer_nodes for node in nodes])
+    x = torch.stack([tensor(node[0]) for nodes in layer_nodes if nodes is not None for node in nodes])
 
     spatial_edge_attr = torch.cat(layer_edge_attrs)
     spatial_edge_index = torch.cat([idxs + n_nodes for idxs, n_nodes in zip(layer_edges, node_indices)])

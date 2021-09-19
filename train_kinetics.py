@@ -6,7 +6,7 @@ from os import path
 import torch
 from torch.nn import CrossEntropyLoss
 from torch.utils.tensorboard import SummaryWriter
-from torch_geometric.data import DataLoader
+from torch_geometric.data import DataLoader, DataListLoader
 
 from loaders.kinetics_loader import Kinetics
 from losses.evaluation_metrics import AccuracyTopK
@@ -40,6 +40,10 @@ def train_video_recognition(
         args=None,
         **kwargs,
 ):
+    use_data_parallel = False
+
+    loader = DataLoader if not use_data_parallel else DataListLoader
+
     train_loader = Kinetics(
         dataset_path=args.dataset_path_train,
         transform=build_transforms(),
@@ -51,7 +55,7 @@ def train_video_recognition(
     # pool.map(train_loader.__getitem__, range(len(train_loader)))
     # [d for d in tqdm(train_loader)]
 
-    train_iter = DataLoader(train_loader,
+    train_iter = loader(train_loader,
                             batch_size=args.batch_size,
                             shuffle=True,
                             num_workers=args.num_workers,
@@ -66,7 +70,7 @@ def train_video_recognition(
 
     # [d for d in tqdm(eval_loader)]
 
-    eval_iter = DataLoader(eval_loader,
+    eval_iter = loader(eval_loader,
                            batch_size=args.batch_size,
                            shuffle=False,
                            num_workers=args.num_workers,
@@ -79,7 +83,7 @@ def train_video_recognition(
         **vars(args),
     )
 
-    test_iter = DataLoader(test_loader,
+    test_iter = loader(test_loader,
                            batch_size=args.batch_size,
                            shuffle=False,
                            num_workers=args.num_workers,
@@ -92,9 +96,10 @@ def train_video_recognition(
     else:
         model = TorchModel.load_model(model_path)
 
+    if use_data_parallel:
+        model.data_parallel()
     model.to(args.device)
     # logging.info(summary(model, train_loader.get_loader_shape()))
-    # model.data_parallel()
 
     criterion = LossWrapper(CrossEntropyLoss())
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -139,7 +144,7 @@ def get_args():
                         help=r'perform evaluation every specified amount of epochs. If the evaluation is expensive, '
                              r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
-    parser.add_argument('--num_workers', default=7, type=int, help='')  # 6
+    parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
     parser.add_argument('--save_every', default=10, type=int, help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
