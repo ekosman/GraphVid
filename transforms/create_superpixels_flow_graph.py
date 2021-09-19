@@ -143,7 +143,7 @@ def get_attr_for_segment_v2(frame, pixel_ys, pixel_xs, method='mean_color'):
         return np.mean(pixel_ys) / frame.shape[0], np.mean(pixel_xs) / frame.shape[1]
     elif method == 'mean_coordinates_and_mean_color':
         colors = frame[pixel_ys, pixel_xs, :]
-        return (colors * 1.0).mean(axis=0), stack([pixel_ys, pixel_xs]).mean(1) / frame.shape[:-1]
+        return (colors * 1.0).mean(axis=0) / 255, stack([pixel_ys, pixel_xs]).mean(1) / frame.shape[:-1]
     else:
         raise NotImplementedError
 
@@ -343,6 +343,8 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
                edge_attr=torch.cat([spatial_edge_attr, temporal_edge_attrs]),
                edge_type=torch.tensor(spatial_relations + temporal_relations)
                )
+
+    res.normalized = True
     if res.num_nodes == 0:
         raise EmptyGraphException
 

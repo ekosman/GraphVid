@@ -7,7 +7,7 @@ from transforms.node_transforms import RandomNodeRemoval, AdditiveGaussianNodeNo
 from transforms.transforms_video import RandomResizedCropVideo
 
 
-def build_transforms(train=False):
+def build_transforms(superpixels=50, train=False):
     """"""
 
     """
@@ -19,16 +19,12 @@ def build_transforms(train=False):
 
     if train:
         res = transforms.Compose([
-            # transforms_video.ToTensorVideo(),
-            # transforms_video.RandomResizedCropVideo(size=(video_height, video_width), crop=video_width),
-            # transforms_video.NormalizeVideo(mean=mean, std=std)
             RandomResizedCropVideo(size=(480, 640), ),
-            VideoClipToSuperPixelFlowGraph(50),
-            AdditiveGaussianEdgeNoise(sigma=0.05),
-            RandomSpatialEdgesRemoval(p=0.8),
-            AdditiveGaussianNodeNoise(sigma=0.05),
-            RandomNodeRemoval(),
-            # NetworkxToGeometric(),
+            VideoClipToSuperPixelFlowGraph(n_segments=superpixels),
+            # AdditiveGaussianEdgeNoise(sigma=0.05),
+            # RandomSpatialEdgesRemoval(p=0.8),
+            # AdditiveGaussianNodeNoise(sigma=0.05),
+            # RandomNodeRemoval(),
         ])
     else:
         res = transforms.Compose([
@@ -36,7 +32,7 @@ def build_transforms(train=False):
             # transforms_video.RandomResizedCropVideo(size=(video_height, video_width), crop=video_width),
             # transforms_video.NormalizeVideo(mean=mean, std=std)
             RandomResizedCropVideo(size=(480, 640), ),
-            VideoClipToSuperPixelFlowGraph(50),
+            VideoClipToSuperPixelFlowGraph(n_segments=superpixels),
             # NetworkxToGeometric(),
         ])
 

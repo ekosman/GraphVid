@@ -30,7 +30,7 @@ def classification_batch_splitter(batch):
     :param batch: input data for AutoEncoder
     :return: tuple (inputs, targets)
     """
-    return (batch[0], ), batch[1]
+    return (batch[0],), batch[1]
 
 
 def train_video_recognition(
@@ -46,8 +46,8 @@ def train_video_recognition(
 
     train_loader = Kinetics(
         dataset_path=args.dataset_path_train,
-        transform=build_transforms(),
-        cache_root=r'/media/eitank/disk2T/Datasets/kinetics400/cache/train',
+        transform=build_transforms(superpixels=args.superpixels, train=True),
+        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/train',
         **vars(args),
     )
 
@@ -56,38 +56,38 @@ def train_video_recognition(
     # [d for d in tqdm(train_loader)]
 
     train_iter = loader(train_loader,
-                            batch_size=args.batch_size,
-                            shuffle=True,
-                            num_workers=args.num_workers,
-                            pin_memory=True)
+                        batch_size=args.batch_size,
+                        shuffle=True,
+                        num_workers=args.num_workers,
+                        pin_memory=True)
 
     eval_loader = Kinetics(
         dataset_path=args.dataset_path_validation,
-        transform=build_transforms(),
-        cache_root=r'/media/eitank/disk2T/Datasets/kinetics400/cache/val',
+        transform=build_transforms(superpixels=args.superpixels, train=False),
+        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/val',
         **vars(args),
     )
 
     # [d for d in tqdm(eval_loader)]
 
     eval_iter = loader(eval_loader,
-                           batch_size=args.batch_size,
-                           shuffle=False,
-                           num_workers=args.num_workers,
-                           pin_memory=True)
+                       batch_size=args.batch_size,
+                       shuffle=False,
+                       num_workers=args.num_workers,
+                       pin_memory=True)
 
     test_loader = Kinetics(
         dataset_path=args.dataset_path_test,
-        transform=build_transforms(),
-        cache_root=r'/media/eitank/disk2T/Datasets/kinetics400/cache/test',
+        transform=build_transforms(superpixels=args.superpixels, train=False),
+        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/test',
         **vars(args),
     )
 
     test_iter = loader(test_loader,
-                           batch_size=args.batch_size,
-                           shuffle=False,
-                           num_workers=args.num_workers,
-                           pin_memory=True)
+                       batch_size=args.batch_size,
+                       shuffle=False,
+                       num_workers=args.num_workers,
+                       pin_memory=True)
 
     # Create the model
     if model_path is None or not path.exists(model_path):
@@ -121,7 +121,7 @@ def train_video_recognition(
         model.fit(
             train_iter=train_iter,
             eval_iter=eval_iter,
-            test_iter=test_iter,#test_iter,
+            test_iter=test_iter,  # test_iter,
             criterion=criterion,
             optimizer=optimizer,
             epochs=args.epochs,
@@ -145,7 +145,8 @@ def get_args():
                              r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
     parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
-    parser.add_argument('--save_every', default=10, type=int, help=r'saving model checkpoints every specified amount of epochs')
+    parser.add_argument('--save_every', default=10, type=int,
+                        help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
     parser.add_argument('--frames_per_clip', default=16, type=int, help=r'')
@@ -167,6 +168,7 @@ def get_args():
                         help="where to save all the outputs: models, visualizations, log, tensorboard")
     parser.add_argument('--epochs', type=int, default=1000, help="number of epochs for training")
     parser.add_argument('--batch_size', type=int, default=50, help="batch size for training")
+    parser.add_argument('--superpixels', type=int, default=50, help="number of superpixels")
     parser.add_argument('--device', type=str, default='cuda', help="device to use for inference of torch models")
     # parser.add_argument('--dataset', type=str, default='comma', help="which loader to use",
     #                     choices=['comma', 'udacity'])
@@ -203,11 +205,12 @@ if __name__ == "__main__":
     tags = [
         f'Dataset: Kinetics',
         f'Architecture: {args.model_type}',
+        f'Superpixels: {args.superpixels}',
     ]
     clearml_logger = None if args.disable_clearml_logger \
         else get_clearml_logger(project_name="GraphVid",
                                 task_name=get_time_str(),
-                                tags=tags,)
+                                tags=tags, )
 
     logging.info(f"Using device {args.device}")
 
