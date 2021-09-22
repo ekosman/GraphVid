@@ -294,7 +294,7 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
             layer_nodes[i_frame] = None
             continue
 
-        edges = get_adjacents_v3(segments)
+        edges = get_adjacents_v2(segments)
         # edges = get_adjacents_v2(segments)
         superpixels_idxs = indices_for_segments(segments, len(idxs))
         node_attrs_coordinates = [get_attr_for_segment_v2(frame,

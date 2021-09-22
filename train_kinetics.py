@@ -144,7 +144,7 @@ def get_args():
                         help=r'perform evaluation every specified amount of epochs. If the evaluation is expensive, '
                              r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
-    parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
+    parser.add_argument('--num_workers', default=8, type=int, help='')  # 7
     parser.add_argument('--save_every', default=10, type=int,
                         help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')

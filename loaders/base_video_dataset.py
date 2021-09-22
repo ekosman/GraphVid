@@ -122,7 +122,7 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
             data = super(CachingVideoDataset, self).__getitem__(item)
 
         data, label = data
-        if not data.normalized:
+        if not data.normalized or not hasattr(data, 'normalized'):
             data.x /= 255
             data.normalized = True
 
