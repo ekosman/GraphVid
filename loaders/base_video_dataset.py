@@ -115,7 +115,7 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
                 try:
                     data = torch.load(dump_path)
                     loaded = True
-                except (EOFError, RuntimeError) as e:
+                except (EOFError, RuntimeError, OSError) as e:
                     pass
 
         if not loaded:

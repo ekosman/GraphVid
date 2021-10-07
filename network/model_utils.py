@@ -18,7 +18,7 @@ def get_model(num_features, num_classes, arch):
     if arch == 'sage':
         model = SAGE(num_features, 256, num_classes)
     elif arch == 'dynamic_gcn':
-        model = DynamicGCNWEdgeAttrs(num_features, 256, num_classes)
+        model = DynamicGCNWEdgeAttrs(num_features, 512, num_classes)
     elif arch == 'gat':
         model = GATSage(num_features, num_classes)
     elif arch == 'mlp':
