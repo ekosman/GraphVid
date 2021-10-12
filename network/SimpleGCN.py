@@ -4,12 +4,11 @@ import torch.nn as nn
 
 
 class SimpleGCN(nn.Module):
-    def __init__(self, num_node_features, num_classes=10):
+    def __init__(self, num_node_features, hidden_size, num_classes=10):
         super(SimpleGCN, self).__init__()
-        hidden_channels = 16
-        self.conv1 = GATConv(num_node_features, 16, heads=4)
-        self.conv2 = GATConv(64, 64, heads=4)
-        self.conv3 = GATConv(256, 128, heads=4, concat=False)
+        self.conv1 = GCNConv(num_node_features, hidden_size)
+        self.conv2 = GCNConv(hidden_size, hidden_size)
+        self.conv3 = GCNConv(hidden_size, num_classes)
         # self.conv4 = GATConv(1024, 1024, heads=4, concat=False)
 
         self.lin1 = nn.Linear(128, num_classes)

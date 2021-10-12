@@ -28,7 +28,7 @@ def get_model(num_features, num_classes, arch):
     elif arch == 'spline':
         model = spline_cnn.Net(num_features=num_features, num_classes=num_classes)
     elif arch == 'simple_gcn':
-        model = SimpleGCN(num_node_features=num_features, num_classes=num_classes)
+        model = SimpleGCN(num_node_features=num_features, hidden_size=512, num_classes=num_classes)
     else:
         raise NotImplementedError
 

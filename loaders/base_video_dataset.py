@@ -122,14 +122,14 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
             data = super(CachingVideoDataset, self).__getitem__(item)
 
         data, label = data
-        if not data.normalized or not hasattr(data, 'normalized'):
+        if not hasattr(data, 'normalized') or not data.normalized:
             data.x /= 255
             data.normalized = True
 
         data = compress_data(data), label
         torch.save(data, dump_path)
 
-        print(i)
+        # print(i)
         i += 1
 
         data, label = data
