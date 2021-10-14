@@ -83,9 +83,10 @@ def size(tensor):
 
 i=1
 class CachingVideoDataset(BaseVideoDataset, ABC):
-    def __init__(self, cache_root, **kwargs):
+    def __init__(self, cache_root, return_name=False, **kwargs):
         super(CachingVideoDataset, self).__init__()
         self.cache_root = cache_root
+        self.return_name = return_name
         try:
             if cache_root is not None:
                 os.makedirs(cache_root, exist_ok=True)
@@ -134,6 +135,9 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
 
         data, label = data
         data = uncompress_data(data), label
+
+        if self.return_name:
+            return data[0], data[1], video_name
 
         return data
 
