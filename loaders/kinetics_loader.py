@@ -47,7 +47,7 @@ class Kinetics(CachingVideoDataset):
                  extensions=('avi', 'mp4', 'mkv'), transform=None, _precomputed_metadata=None,
                  num_workers=8, _video_width=0, _video_height=0,
                  _video_min_dimension=0, _audio_samples=0, _audio_channels=0, **kwargs):
-        super(Kinetics, self).__init__(kwargs.get('cache_root'))
+        super(Kinetics, self).__init__(kwargs.get('cache_root'), return_name=kwargs.get('return_name'))
 
         self.root = dataset_path
         self.show_errors = False
@@ -81,6 +81,7 @@ class Kinetics(CachingVideoDataset):
 
         logging.info("VideoClips ready!")
         self.transform = transform
+        self.path_2_idx = {p: i for i, p in enumerate(self.video_clips.video_paths)}
 
         if not flag_metadata_exists:
             torch.save(self.video_clips.metadata, precomputed_metadata_path)

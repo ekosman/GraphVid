@@ -104,11 +104,12 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         video_path = self.video_clips.video_paths[video_idx]
         _, video_name = video_path.split(os.sep)[-2:]
         video_name = video_name.split('.')[0]
-        return video_name, clip_idx
+        return video_name, clip_idx, video_path
 
     def __getitem__(self, item):
         global i
-        video_name, clip_idx = self.get_item_properties(item)
+        video_name, clip_idx, video_path = self.get_item_properties(item)
+        video_idx = self.path_2_idx[video_path]
         dump_path = path.join(self.cache_root, f"{video_name}_clip_{clip_idx}.file")
         loaded = False
         if self.cache_root is not None:
@@ -137,7 +138,7 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         data = uncompress_data(data), label
 
         if self.return_name:
-            return data[0], data[1], video_name
+            return data[0], data[1], video_idx
 
         return data
 

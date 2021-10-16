@@ -58,34 +58,44 @@ def test_video_recognition(
     model.to(args.device)
 
     # criterion = LossWrapper(CrossEntropyLoss())
-
+    model = model.eval()
     video_predictions = dict()
     video_labels = dict()
+    with torch.no_grad():
+        for data, labels, video_names in tqdm(test_iter):
+            outputs = model(data.to(args.device)).softmax(dim=-1).cpu()
 
-    for data, labels, video_names in tqdm(test_iter):
-        outputs = model(data.to(args.device))
+            for output, label, video_name in zip(outputs, labels, video_names):
+                video_name = video_name.item()
+                if video_name not in video_predictions:
+                    video_predictions[video_name] = output
+                else:
+                    video_predictions[video_name] = torch.vstack([video_predictions[video_name], output])
 
-        for output, label, video_name in zip(outputs, labels, video_names):
-            if video_name not in video_predictions:
-                video_predictions[video_name] = torch.tensor([])
+                video_labels[video_name] = label
 
-            video_predictions[video_name] = torch.cat([video_predictions[video_name], output])
-            video_labels[video_name] = label
+    for num_views in range(2, 20):
+        n_true_top1 = 0
+        n_true_top5 = 0
+        for video_name, _ in video_predictions.items():
+            pred = video_predictions[video_name].view(-1, 400)
+            sample_idx = np.random.choice(len(pred), size=min(num_views, len(pred)), replace=False)
 
-    n_true = 0
-    for video_name, _ in video_predictions.items():
-        pred = video_predictions[video_name]
-        sample_idx = np.random.choice(len(pred), size=args.num_views, replace=False)
-        pred = pred[sample_idx].mean(dim=0).argmax(dim=1)
-        n_true += (pred == video_labels[video_name])
 
-    print(f"Accuracy: {n_true / len(video_predictions)}")
+            pred = pred[sample_idx].mean(dim=0)
+            top1_indices = pred.topk(1).indices
+            top5_indices = pred.topk(5).indices
+            y_true = torch.tensor(video_labels[video_name])
+            n_true_top1 += (top1_indices == y_true.view(1).expand_as(top1_indices)).sum()
+            n_true_top5 += (top5_indices == y_true.view(1).expand_as(top5_indices)).sum()
+
+        print(f"Accuracy ({num_views} views) (top  1): {n_true_top1 / len(video_labels)} \t|\t (top 5) {n_true_top5 / len(video_predictions)}")
 
 
 def get_args():
     parser = argparse.ArgumentParser(description="Train signals prediction")
     # io
-    parser.add_argument('--dataset_path_test', help='path to a directory containing all the data')
+    parser.add_argument('--dataset_path_test', help='path to a directory containing all the data', default=r'/media/eitank/disk2T/Datasets/kinetics400/test/')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
     parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
     parser.add_argument('--num_views', default=4, type=int, help='')
@@ -108,7 +118,7 @@ def get_args():
                         # default=r"./exps",
                         default=r"//media/eitank/disk2T/exps/graphVid",
                         help="where to save all the outputs: models, visualizations, log, tensorboard")
-    parser.add_argument('--batch_size', type=int, default=50, help="batch size for training")
+    parser.add_argument('--batch_size', type=int, default=800, help="batch size for training")
     parser.add_argument('--superpixels', type=int, default=50, help="number of superpixels")
     parser.add_argument('--device', type=str, default='cuda', help="device to use for inference of torch models")
     # parser.add_argument('--dataset', type=str, default='comma', help="which loader to use",
