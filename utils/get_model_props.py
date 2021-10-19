@@ -5,6 +5,7 @@ from os import path
 
 import numpy as np
 import torch
+from fvcore.nn import FlopCountAnalysis
 from torch_geometric.data import DataLoader, DataListLoader
 from tqdm import tqdm
 
@@ -65,39 +66,21 @@ def test_video_recognition(
 
     print(f"Model's number of parameters: {pytorch_total_params}")
 
-    # criterion = LossWrapper(CrossEntropyLoss())
+    video_flops = []
     model = model.eval()
-    video_predictions = dict()
-    video_labels = dict()
+    i=0
     with torch.no_grad():
         for data, labels, video_names in tqdm(test_iter):
-            outputs = model(data.to(args.device)).softmax(dim=-1).cpu()
+            _, flops = model(data.to(args.device), True)
+            flops /= len(labels)
+            video_flops += [flops] * len(labels)
 
-            for output, label, video_name in zip(outputs, labels, video_names):
-                video_name = video_name.item()
-                if video_name not in video_predictions:
-                    video_predictions[video_name] = output
-                else:
-                    video_predictions[video_name] = torch.vstack([video_predictions[video_name], output])
+            if i == 10:
+                break
 
-                video_labels[video_name] = label
+            i += 1
 
-    for num_views in range(2, 20):
-        n_true_top1 = 0
-        n_true_top5 = 0
-        for video_name, _ in video_predictions.items():
-            pred = video_predictions[video_name].view(-1, 400)
-            sample_idx = np.random.choice(len(pred), size=min(num_views, len(pred)), replace=False)
-
-
-            pred = pred[sample_idx].mean(dim=0)
-            top1_indices = pred.topk(1).indices
-            top5_indices = pred.topk(5).indices
-            y_true = torch.tensor(video_labels[video_name])
-            n_true_top1 += (top1_indices == y_true.view(1).expand_as(top1_indices)).sum()
-            n_true_top5 += (top5_indices == y_true.view(1).expand_as(top5_indices)).sum()
-
-        print(f"Accuracy ({num_views} views) (top  1): {n_true_top1 / len(video_labels)} \t|\t (top 5) {n_true_top5 / len(video_predictions)}")
+    print(f"{np.mean(video_flops) / 10**9} GFLOPs")
 
 
 def get_args():

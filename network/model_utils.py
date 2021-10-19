@@ -1,5 +1,5 @@
 from network import spline_cnn
-from network.SimpleGCN import SimpleGCN
+from network.SimpleGCN import SimpleGCN, SimpleGAT
 from network.gat_sage import GATSage
 from network.mlp_node_prediction import MLP
 from network.pna import PNA
@@ -20,7 +20,7 @@ def get_model(num_features, num_classes, arch):
     elif arch == 'dynamic_gcn':
         model = DynamicGCNWEdgeAttrs(num_features, 512, num_classes)
     elif arch == 'gat':
-        model = GATSage(num_features, num_classes)
+        model = SimpleGAT(num_node_features=num_features, hidden_size=512, num_classes=num_classes)
     elif arch == 'mlp':
         model = MLP(num_features, num_classes, 2)
     elif arch == 'pna':

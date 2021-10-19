@@ -131,7 +131,7 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         data = compress_data(data), label
         torch.save(data, dump_path)
 
-        # print(i)
+        print(i)
         i += 1
 
         data, label = data

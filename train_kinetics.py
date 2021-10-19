@@ -145,7 +145,7 @@ def get_args():
                              r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
     parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
-    parser.add_argument('--save_every', default=10, type=int,
+    parser.add_argument('--save_every', default=4, type=int,
                         help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
