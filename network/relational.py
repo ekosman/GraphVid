@@ -49,7 +49,6 @@ class DynamicGCNWEdgeAttrs(nn.Module):
 
         self.lin1 = nn.Linear(hidden_size, num_classes)
 
-
     def forward(self, data, flops=False):
         elu = nn.ELU()
         sum = 0

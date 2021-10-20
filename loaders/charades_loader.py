@@ -53,20 +53,21 @@ class Charades(CachingVideoDataset):
 
         self.annotations_path = path.join(dataset_path, 'annotations', f'Charades_v1_{phase}.csv')
         self.annotations = pd.read_csv(self.annotations_path)
+        self.annotations['id'] += r'.mp4'
 
         self.root = dataset_path
         self.show_errors = False
 
         with open(path.join(dataset_path, 'annotations', 'Charades_v1_classes.txt'), 'r') as fp:
             lines = fp.read().splitlines(keepends=False)
-        classes = [line.split(' ')[0] for line in lines
-                   ]
-        class_to_idx = {classes[i]: i for i in range(len(classes))}
-        self.classes = classes
+        self.classes = sorted([line.split(' ')[0] for line in lines])
+        self.class_to_idx = {self.classes[i]: i for i in range(len(self.classes))}
         self.steps_between_frames = steps_between_frames
         self.total_clip_duration_in_frames = frames_per_clip * steps_between_frames
-        video_list = [path.join(dataset_path, 'videos', video) for video in os.listdir(path.join(dataset_path, 'videos'))]
-        precomputed_metadata_path = path.join(dataset_path, 'metadata.pt')
+        video_list = Charades.find_existing_videos(videos_dir=path.join(dataset_path, 'videos'),
+                                                   required_videos=set(self.annotations['id'].values))
+        video_list = [path.join(dataset_path, 'videos', video) for video in video_list]
+        precomputed_metadata_path = path.join(dataset_path, f'metadata_{phase}.pt')
         flag_metadata_exists = False
         if path.exists(precomputed_metadata_path):
             _precomputed_metadata = torch.load(precomputed_metadata_path)
@@ -93,7 +94,12 @@ class Charades(CachingVideoDataset):
         if not flag_metadata_exists:
             torch.save(self.video_clips.metadata, precomputed_metadata_path)
 
-        # self.cached_graphs = [None] * len(self)
+    @staticmethod
+    def find_existing_videos(videos_dir, required_videos):
+        existing_videos = set(os.listdir(videos_dir))
+        res = existing_videos.intersection(required_videos)
+        logging.info(f"Found {len(res)} out of {len(required_videos)} videos")
+        return res
 
     def get_item_aux(self, idx):
         # if self.cached_graphs[idx] is not None:
@@ -116,5 +122,5 @@ class Charades(CachingVideoDataset):
 
 
 if __name__ == '__main__':
-    dataset = Charades(r'/media/eitank/disk2T/Datasets/Charades', phase='train', cache_root=None)
+    dataset = Charades(r'/media/eitank/disk2T/Datasets/Charades_v1', phase='test', cache_root=None)
     dataset[0]
