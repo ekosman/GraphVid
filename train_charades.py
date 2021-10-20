@@ -45,7 +45,7 @@ def train_video_recognition(
     loader = DataLoader if not use_data_parallel else DataListLoader
 
     train_loader = Charades(
-        dataset_path=args.dataset_path_train,
+        dataset_path=args.dataset_path,
         transform=build_transforms(superpixels=args.superpixels, train=True),
         cache_root=f'/media/eitank/disk2T/Datasets/Charades/{args.superpixels}/cache/train',
         phase='train',
@@ -59,7 +59,7 @@ def train_video_recognition(
                         pin_memory=True)
 
     test_loader = Charades(
-        dataset_path=args.dataset_path_test,
+        dataset_path=args.dataset_path,
         transform=build_transforms(superpixels=args.superpixels, train=False),
         cache_root=f'/media/eitank/disk2T/Datasets/Charades/{args.superpixels}/cache/test',
         phase='test',
@@ -116,8 +116,7 @@ def train_video_recognition(
 def get_args():
     parser = argparse.ArgumentParser(description="Train signals prediction")
     # io
-    parser.add_argument('--dataset_path_train', help='path to a directory containing all the data')
-    parser.add_argument('--dataset_path_test', help='path to a directory containing all the data')
+    parser.add_argument('--dataset_path', help='path to a directory containing all the data')
     parser.add_argument('--evaluate_every',
                         default=10,
                         type=int,
