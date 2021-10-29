@@ -68,7 +68,7 @@ class BaseVideoDataset(ABC):
             try:
                 data = self.get_item_aux(idx)
                 succ = True
-            except (EmptyGraphException, AssertionError) as e:
+            except (EmptyGraphException, AssertionError, IndexError) as e:
                 idx = random.randint(0, len(self) - 1)
 
                 if self.show_errors:

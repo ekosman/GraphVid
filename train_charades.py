@@ -45,7 +45,6 @@ def train_video_recognition(
     loader = DataLoader if not use_data_parallel else DataListLoader
 
     train_loader = Charades(
-        dataset_path=args.dataset_path,
         transform=build_transforms(superpixels=args.superpixels, train=True),
         cache_root=f'/media/eitank/disk2T/Datasets/Charades/{args.superpixels}/cache/train',
         phase='train',
@@ -59,7 +58,6 @@ def train_video_recognition(
                         pin_memory=True)
 
     test_loader = Charades(
-        dataset_path=args.dataset_path,
         transform=build_transforms(superpixels=args.superpixels, train=False),
         cache_root=f'/media/eitank/disk2T/Datasets/Charades/{args.superpixels}/cache/test',
         phase='test',
@@ -123,7 +121,7 @@ def get_args():
                         help=r'perform evaluation every specified amount of epochs. If the evaluation is expensive, '
                              r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
-    parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
+    parser.add_argument('--num_workers', default=0, type=int, help='')  # 7
     parser.add_argument('--save_every', default=4, type=int,
                         help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
@@ -151,7 +149,7 @@ def get_args():
     parser.add_argument('--device', type=str, default='cuda', help="device to use for inference of torch models")
     # parser.add_argument('--dataset', type=str, default='comma', help="which loader to use",
     #                     choices=['comma', 'udacity'])
-    parser.add_argument('--learning_rate', type=float, default=1e-3, help="learning rate for the optimizer")
+    parser.add_argument('--learning_rate', type=float, default=1e-4, help="learning rate for the optimizer")
     parser.add_argument('--show_errors',
                         default=False,
                         action='store_true',

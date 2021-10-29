@@ -40,7 +40,9 @@ class DynamicGCN(nn.Module):
 class DynamicGCNWEdgeAttrs(nn.Module):
     def __init__(self, num_node_features, hidden_size, num_classes=10):
         super(DynamicGCNWEdgeAttrs, self).__init__()
-        self.conv1 = EdgeAtrrRGCN(num_node_features, hidden_size, num_relations=2, edge_dim=1)
+        self.enc1 = nn.Linear(num_node_features, 128)
+        self.enc2 = nn.Linear(128, 256)
+        self.conv1 = EdgeAtrrRGCN(256, hidden_size, num_relations=2, edge_dim=1)
         self.conv2 = EdgeAtrrRGCN(hidden_size, hidden_size, num_relations=2, edge_dim=1)
         self.conv3 = EdgeAtrrRGCN(hidden_size, hidden_size, num_relations=2, edge_dim=1)
         self.conv4 = EdgeAtrrRGCN(hidden_size, hidden_size, num_relations=2, edge_dim=1)
@@ -56,6 +58,20 @@ class DynamicGCNWEdgeAttrs(nn.Module):
         # edge_type = edge_type.to(torch.long)
         # edge_index = edge_index.to(torch.long)
         x = x.float()
+
+        if flops:
+            sum += FlopCountAnalysis(self.enc1, (x, )).total()
+        x = self.enc1(x)
+
+        if flops:
+            sum += FlopCountAnalysis(elu, (x, )).total()
+
+        if flops:
+            sum += FlopCountAnalysis(self.enc2, (x,)).total()
+        x = self.enc2(x)
+
+        if flops:
+            sum += FlopCountAnalysis(elu, (x,)).total()
 
         if flops:
             sum += FlopCountAnalysis(self.conv1, (x, edge_index, edge_type, edge_attr)).total()

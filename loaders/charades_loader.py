@@ -12,20 +12,6 @@ from loaders.base_video_dataset import CachingVideoDataset
 
 class Charades(CachingVideoDataset):
     """
-    `Kinetics <https://deepmind.com/research/open-source/open-source-datasets/kinetics/>`_
-    dataset.
-
-    Kinetics is an action recognition video dataset.
-    This dataset consider every video as a collection of video clips of fixed size, specified
-    by ``frames_per_clip``, where the step in frames between each clip is given by
-    ``step_between_clips``.
-
-    To give an example, for 2 videos with 10 and 15 frames respectively, if ``frames_per_clip=5``
-    and ``step_between_clips=5``, the dataset size will be (2 + 3) = 5, where the first two
-    elements will come from video 1, and the next three elements from video 2.
-    Note that we drop clips which do not have exactly ``frames_per_clip`` elements, so not all
-    frames in a video might be present.
-
     Internally, it uses a VideoClips object to handle clip creation.
 
     Args:
@@ -128,6 +114,7 @@ class Charades(CachingVideoDataset):
 
         # video is Tensor[T, H, W, C]
         video, audio, info, video_idx = self.video_clips.get_clip(idx)
+
         video_idx, clip_idx = self.video_clips.get_clip_location(idx)
         video_name = self.video_clips.video_paths[video_idx].split(r'/')[-1]
         video = video[range(0, self.total_clip_duration_in_frames, self.steps_between_frames)]
@@ -141,16 +128,17 @@ class Charades(CachingVideoDataset):
         for does_intersect, label in (
                 (check_intersection(action_start, action_end, clip_start, clip_end), self.class_to_idx[label])
                 for action_start, action_end, label in action_annotations):
-            if does_intersect: labels[label] = 1
+            if does_intersect:
+                labels[label] = 1
 
         if self.transform is not None:
             video = self.transform(video)
 
         # self.cached_graphs[idx] = video, label
 
-        if video is None or label is None:
+        if video is None or labels is None:
             pass
-        return video, label
+        return video, torch.tensor(labels)
 
 
 def check_intersection(window1_start, window1_end, window2_start, window2_end):

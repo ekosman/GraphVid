@@ -9,7 +9,9 @@ from network.EdgeAttrGCN import EdgeAtrrGCNConv
 class SimpleGCN(nn.Module):
     def __init__(self, num_node_features, hidden_size, num_classes=10):
         super(SimpleGCN, self).__init__()
-        self.conv1 = EdgeAtrrGCNConv(num_node_features, hidden_size, edge_dim=1)
+        self.enc1 = nn.Linear(num_node_features, 128)
+        self.enc2 = nn.Linear(128, 256)
+        self.conv1 = EdgeAtrrGCNConv(256, hidden_size, edge_dim=1)
         self.conv2 = EdgeAtrrGCNConv(hidden_size, hidden_size, edge_dim=1)
         self.conv3 = EdgeAtrrGCNConv(hidden_size, hidden_size, edge_dim=1)
         self.conv4 = EdgeAtrrGCNConv(hidden_size, hidden_size, edge_dim=1)
@@ -23,6 +25,17 @@ class SimpleGCN(nn.Module):
         # edge_type = edge_type.to(torch.long)
         # edge_index = edge_index.to(torch.long)
         x = x.float()
+
+        if flops:
+            sum += FlopCountAnalysis(self.enc1, (x,)).total()
+        x = self.enc1(x)
+
+        if flops:
+            sum += FlopCountAnalysis(elu, (x,)).total()
+
+        if flops:
+            sum += FlopCountAnalysis(self.enc2, (x,)).total()
+        x = self.enc2(x)
 
         if flops:
             sum += FlopCountAnalysis(self.conv1, (x, edge_index, edge_type, edge_attr)).total()
@@ -75,7 +88,9 @@ class SimpleGCN(nn.Module):
 class SimpleGAT(nn.Module):
     def __init__(self, num_node_features, hidden_size, num_classes=10):
         super(SimpleGAT, self).__init__()
-        self.conv1 = GATConv(num_node_features, hidden_size, heads=4, concat=False)
+        self.enc1 = nn.Linear(num_node_features, 128)
+        self.enc2 = nn.Linear(128, 256)
+        self.conv1 = GATConv(256, hidden_size, heads=4, concat=False)
         self.conv2 = GATConv(hidden_size, hidden_size, heads=4, concat=False)
         self.conv3 = GATConv(hidden_size, hidden_size, heads=4, concat=False)
         self.conv4 = GATConv(hidden_size, hidden_size, heads=4, concat=False)
@@ -89,6 +104,17 @@ class SimpleGAT(nn.Module):
         # edge_type = edge_type.to(torch.long)
         # edge_index = edge_index.to(torch.long)
         x = x.float()
+
+        if flops:
+            sum += FlopCountAnalysis(self.enc1, (x,)).total()
+        x = self.enc1(x)
+
+        if flops:
+            sum += FlopCountAnalysis(elu, (x,)).total()
+
+        if flops:
+            sum += FlopCountAnalysis(self.enc2, (x,)).total()
+        x = self.enc2(x)
 
         if flops:
             sum += FlopCountAnalysis(self.conv1, (x, edge_index)).total()
