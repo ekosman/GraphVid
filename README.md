@@ -14,3 +14,23 @@ Next, use the downloaded dataset to train your model by:
 ```cmd
 python train_kinetics.py --dataset_path_train <path to train set> --dataset_path_validation <path to validation set> --dataset_path_test <path to train set> 
 ```
+
+Additional arguments are described into argparse. Run the following command to retrieve their description:
+
+```cmd
+python train_kinetics.py --help
+```
+
+Next, evaluate the model:
+
+```cmd
+python test_kinetics.py --dataset_path_test <path to test set>
+```
+
+Additional arguments are described into argparse. Run the following command to retrieve their description:
+
+```cmd
+python test_kinetics.py --help
+```
+
+Note that some configurations must match those of the trained model, such as number of superpixels, frames per clip, etc.

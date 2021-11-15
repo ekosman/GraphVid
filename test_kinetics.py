@@ -42,7 +42,7 @@ def test_video_recognition(
     test_loader = Kinetics(
         dataset_path=args.dataset_path_test,
         transform=build_transforms(superpixels=args.superpixels, train=False),
-        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/test',
+        # cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/test',
         return_name=True,
         **vars(args),
     )
@@ -103,7 +103,7 @@ def test_video_recognition(
 def get_args():
     parser = argparse.ArgumentParser(description="Train signals prediction")
     # io
-    parser.add_argument('--dataset_path_test', help='path to a directory containing all the data', default=r'/media/eitank/disk2T/Datasets/kinetics400/test/')
+    parser.add_argument('--dataset_path_test', help='path to a directory containing all the data')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
     parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
     parser.add_argument('--num_views', default=4, type=int, help='')
@@ -124,7 +124,6 @@ def get_args():
                         help=r'name of the task. used as namespace for saving output directory')
     parser.add_argument('--exps_dir',
                         # default=r"./exps",
-                        default=r"//media/eitank/disk2T/exps/graphVid",
                         help="where to save all the outputs: models, visualizations, log, tensorboard")
     parser.add_argument('--batch_size', type=int, default=800, help="batch size for training")
     parser.add_argument('--superpixels', type=int, default=50, help="number of superpixels")
@@ -140,7 +139,6 @@ def get_args():
                         action='store_true',
                         help="disable logging to clearml server")
     parser.add_argument('--config_file',
-                        default='/home/koe1tv/idiada2wpdatascience/src/signals_predictions/configs/test_video_mfnet_regression.json',
                         type=str,
                         help='path to a json files containing further configurations for this script. Good for model-specific configurations')
 
