@@ -47,7 +47,7 @@ def train_video_recognition(
     train_loader = Kinetics(
         dataset_path=args.dataset_path_train,
         transform=build_transforms(superpixels=args.superpixels, train=True),
-        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/train',
+        # cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/train',
         **vars(args),
     )
 
@@ -64,7 +64,7 @@ def train_video_recognition(
     eval_loader = Kinetics(
         dataset_path=args.dataset_path_validation,
         transform=build_transforms(superpixels=args.superpixels, train=False),
-        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/val',
+        # cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/val',
         **vars(args),
     )
 
@@ -79,7 +79,7 @@ def train_video_recognition(
     test_loader = Kinetics(
         dataset_path=args.dataset_path_test,
         transform=build_transforms(superpixels=args.superpixels, train=False),
-        cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/test',
+        # cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/test',
         **vars(args),
     )
 
@@ -151,8 +151,8 @@ def get_args():
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
     parser.add_argument('--frames_per_clip', default=16, type=int, help=r'')
     parser.add_argument('--model_type',
-                        default='gcn',
-                        # choices=['gcn', 'gat', 'simple_gcn', 'pna'],
+                        default='dynamic_gcn',
+                        # choices=['dynamic_gcn', 'gat', 'simple_gcn'],
                         type=str,
                         help='which model to use for training')
     parser.add_argument('--model_path',
@@ -163,12 +163,10 @@ def get_args():
                         type=str,
                         help=r'name of the task. used as namespace for saving output directory')
     parser.add_argument('--exps_dir',
-                        # default=r"./exps",
-                        default=r"//media/eitank/disk2T/exps/graphVid",
                         help="where to save all the outputs: models, visualizations, log, tensorboard")
     parser.add_argument('--epochs', type=int, default=1000, help="number of epochs for training")
-    parser.add_argument('--batch_size', type=int, default=50, help="batch size for training")
-    parser.add_argument('--superpixels', type=int, default=50, help="number of superpixels")
+    parser.add_argument('--batch_size', type=int, default=200, help="batch size for training")
+    parser.add_argument('--superpixels', type=int, default=800, help="number of superpixels")
     parser.add_argument('--device', type=str, default='cuda', help="device to use for inference of torch models")
     # parser.add_argument('--dataset', type=str, default='comma', help="which loader to use",
     #                     choices=['comma', 'udacity'])
@@ -182,7 +180,6 @@ def get_args():
                         action='store_true',
                         help="disable logging to clearml server")
     parser.add_argument('--config_file',
-                        default='/home/koe1tv/idiada2wpdatascience/src/signals_predictions/configs/test_video_mfnet_regression.json',
                         type=str,
                         help='path to a json files containing further configurations for this script. Good for model-specific configurations')
 

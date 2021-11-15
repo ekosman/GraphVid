@@ -83,7 +83,7 @@ def size(tensor):
 
 i=1
 class CachingVideoDataset(BaseVideoDataset, ABC):
-    def __init__(self, cache_root, return_name=False, **kwargs):
+    def __init__(self, cache_root=None, return_name=False, **kwargs):
         super(CachingVideoDataset, self).__init__()
         self.cache_root = cache_root
         self.return_name = return_name
@@ -110,7 +110,8 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         global i
         video_name, clip_idx, video_path = self.get_item_properties(item)
         video_idx = self.path_2_idx[video_path]
-        dump_path = path.join(self.cache_root, f"{video_name}_clip_{clip_idx}.file")
+        if self.cache_root is not None:
+            dump_path = path.join(self.cache_root, f"{video_name}_clip_{clip_idx}.file")
         loaded = False
         if self.cache_root is not None:
             if path.exists(dump_path):
@@ -129,10 +130,11 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
             data.normalized = True
 
         data = compress_data(data), label
-        torch.save(data, dump_path)
+        if self.cache_root is not None:
+            torch.save(data, dump_path)
 
-        print(i)
-        i += 1
+        # print(i)
+        # i += 1
 
         data, label = data
         data = uncompress_data(data), label
