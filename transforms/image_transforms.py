@@ -179,67 +179,6 @@ class RandomHorizontalFlip(Transform):
             data = np.ascontiguousarray(data)
         return data
 
-class RandomVerticalFlip(Transform):
-    """Randomly vertically flips the given numpy array with a probability of 0.5
-    """
-    def __init__(self):
-        self.rng = np.random.RandomState(0)
-
-    def __call__(self, data):
-        if self.rng.rand() < 0.5:
-            data = np.flipud(data)
-            data = np.ascontiguousarray(data)
-        return data
-
-class RandomRGB(Transform):
-    def __init__(self, vars=[10, 10, 10]):
-        self.vars = vars
-        self.rng = np.random.RandomState(0)
-
-    def __call__(self, data):
-        h, w, c = data.shape
-
-        random_vars = [int(round(self.rng.uniform(-x, x))) for x in self.vars]
-
-        base = len(random_vars)
-        augmented_data = np.zeros(data.shape)
-        for ic in range(0, c):
-            var = random_vars[ic%base]
-            augmented_data[:,:,ic] = np.minimum(np.maximum(data[:,:,ic] + var, 0), 255)
-        return augmented_data
-
-class RandomHLS(Transform):
-    def __init__(self, vars=[15, 35, 25]):
-        self.vars = vars
-        self.rng = np.random.RandomState(0)
-
-    def __call__(self, data):
-        h, w, c = data.shape
-        assert c%3 == 0, "input channel = %d, illegal"%c
-
-        random_vars = [int(round(self.rng.uniform(-x, x))) for x in self.vars]
-
-        base = len(random_vars)
-        augmented_data = np.zeros(data.shape, )
-
-        for i_im in range(0, int(c/3)):
-            augmented_data[:,:,3*i_im:(3*i_im+3)] = \
-                    cv2.cvtColor(data[:,:,3*i_im:(3*i_im+3)], cv2.COLOR_RGB2HLS)
-
-        hls_limits = [180, 255, 255]
-        for ic in range(0, c):
-            var = random_vars[ic%base]
-            limit = hls_limits[ic%base]
-            augmented_data[:,:,ic] = np.minimum(np.maximum(augmented_data[:,:,ic] + var, 0), limit)
-
-        for i_im in range(0, int(c/3)):
-            augmented_data[:,:,3*i_im:(3*i_im+3)] = \
-                    cv2.cvtColor(augmented_data[:,:,3*i_im:(3*i_im+3)].astype(np.uint8), \
-                        cv2.COLOR_HLS2RGB)
-
-        return augmented_data
-
-
 class ToTensor(Transform):
     """Converts a numpy.ndarray (H x W x C) in the range
     [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0].
