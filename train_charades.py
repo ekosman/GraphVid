@@ -100,7 +100,7 @@ def train_video_recognition(
         model.fit(
             train_iter=train_iter,
             eval_iter=None,
-            test_iter=test_iter,  # test_iter,
+            test_iter=test_iter,
             criterion=criterion,
             optimizer=optimizer,
             epochs=args.epochs,

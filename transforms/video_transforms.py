@@ -4,7 +4,6 @@ import numpy as np
 import numbers
 import random
 
-import torch
 from torchvision.transforms import (
     RandomCrop,
     RandomResizedCrop,

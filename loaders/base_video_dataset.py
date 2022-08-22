@@ -4,8 +4,6 @@ import random
 from abc import ABC, abstractmethod
 from os import path
 import torch
-from collections import Mapping, Container
-from sys import getsizeof
 
 from transforms.create_superpixels_flow_graph import EmptyGraphException
 from utils.PackageUtils.TorchUtils import compress_data, uncompress_data
@@ -81,8 +79,11 @@ def size(tensor):
     return tensor.element_size() * tensor.nelement()
 
 
-i=1
+i = 1
+
+
 class CachingVideoDataset(BaseVideoDataset, ABC):
+
     def __init__(self, cache_root=None, return_name=False, **kwargs):
         super(CachingVideoDataset, self).__init__()
         self.cache_root = cache_root
@@ -108,6 +109,7 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
 
     def __getitem__(self, item):
         global i
+        item = 1
         video_name, clip_idx, video_path = self.get_item_properties(item)
         video_idx = self.path_2_idx[video_path]
         if self.cache_root is not None:
@@ -143,5 +145,3 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
             return data[0], data[1], video_idx
 
         return data
-
-

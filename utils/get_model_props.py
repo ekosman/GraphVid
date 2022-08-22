@@ -5,7 +5,6 @@ from os import path
 
 import numpy as np
 import torch
-from fvcore.nn import FlopCountAnalysis
 from torch_geometric.data import DataLoader, DataListLoader
 from tqdm import tqdm
 

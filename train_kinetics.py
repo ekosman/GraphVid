@@ -34,11 +34,11 @@ def classification_batch_splitter(batch):
 
 
 def train_video_recognition(
-        output_dirs=None,
-        learning_rate=0.001,
-        model_path=None,
-        args=None,
-        **kwargs,
+    output_dirs=None,
+    learning_rate=0.001,
+    model_path=None,
+    args=None,
+    **kwargs,
 ):
     use_data_parallel = False
 
@@ -50,10 +50,6 @@ def train_video_recognition(
         # cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/train',
         **vars(args),
     )
-
-    # pool = multiprocessing.Pool(processes=5)
-    # pool.map(train_loader.__getitem__, range(len(train_loader)))
-    # [d for d in tqdm(train_loader)]
 
     train_iter = loader(train_loader,
                         batch_size=args.batch_size,
@@ -67,8 +63,6 @@ def train_video_recognition(
         # cache_root=f'/media/eitank/disk2T/Datasets/kinetics400/{args.superpixels}/cache/val',
         **vars(args),
     )
-
-    # [d for d in tqdm(eval_loader)]
 
     eval_iter = loader(eval_loader,
                        batch_size=args.batch_size,
@@ -107,12 +101,10 @@ def train_video_recognition(
 
     losses_names = ['total']
 
-    model.register_callback(TensorBoardCallback(tb_writer=tb_writer,
-                                                loss_names=losses_names))
+    model.register_callback(TensorBoardCallback(tb_writer=tb_writer, loss_names=losses_names))
 
-    model.register_callback(DefaultModelCallback(log_every=args.log_every,
-                                                 save_every=args.save_every,
-                                                 loss_names=losses_names))
+    model.register_callback(
+        DefaultModelCallback(log_every=args.log_every, save_every=args.save_every, loss_names=losses_names))
 
     model.add_evaluation_metric(AccuracyTopK(k=1, tb_writer=tb_writer))
     model.add_evaluation_metric(AccuracyTopK(k=5, tb_writer=tb_writer))
@@ -121,7 +113,7 @@ def train_video_recognition(
         model.fit(
             train_iter=train_iter,
             eval_iter=eval_iter,
-            test_iter=test_iter,  # test_iter,
+            test_iter=test_iter,
             criterion=criterion,
             optimizer=optimizer,
             epochs=args.epochs,
@@ -135,35 +127,40 @@ def train_video_recognition(
 def get_args():
     parser = argparse.ArgumentParser(description="Train signals prediction")
     # io
-    parser.add_argument('--dataset_path_train', help='path to a directory containing all the data')
+    parser.add_argument(
+        '--dataset_path_train',
+        help='path to a directory containing all the data',
+    )
     parser.add_argument('--dataset_path_validation', help='path to a directory containing all the data')
     parser.add_argument('--dataset_path_test', help='path to a directory containing all the data')
     parser.add_argument('--evaluate_every',
                         default=10,
                         type=int,
                         help=r'perform evaluation every specified amount of epochs. If the evaluation is expensive, '
-                             r'you probably want to choose a high value for this')
+                        r'you probably want to choose a high value for this')
     parser.add_argument('--log_every', default=1, type=int, help='logging intervals while training (iterations)')
     parser.add_argument('--num_workers', default=7, type=int, help='')  # 7
-    parser.add_argument('--save_every', default=4, type=int,
+    parser.add_argument('--save_every',
+                        default=4,
+                        type=int,
                         help=r'saving model checkpoints every specified amount of epochs')
     parser.add_argument('--steps_between_frames', default=1, type=int, help=r'')
     parser.add_argument('--step_between_clips', default=1, type=int, help=r'')
     parser.add_argument('--frames_per_clip', default=16, type=int, help=r'')
-    parser.add_argument('--model_type',
-                        default='dynamic_gcn',
-                        # choices=['dynamic_gcn', 'gat', 'simple_gcn'],
-                        type=str,
-                        help='which model to use for training')
-    parser.add_argument('--model_path',
-                        type=str,
-                        help=r'path of a pickled torch model to load')
+    parser.add_argument(
+        '--model_type',
+        default='dynamic_gcn',
+        # choices=['dynamic_gcn', 'gat', 'simple_gcn'],
+        type=str,
+        help='which model to use for training')
+    parser.add_argument('--model_path', type=str, help=r'path of a pickled torch model to load')
     parser.add_argument('--task_name',
                         default='no_name',
                         type=str,
                         help=r'name of the task. used as namespace for saving output directory')
     parser.add_argument('--exps_dir',
-                        help="where to save all the outputs: models, visualizations, log, tensorboard")
+                        help="where to save all the outputs: models, visualizations, log, tensorboard",
+                        default="./exps")
     parser.add_argument('--epochs', type=int, default=1000, help="number of epochs for training")
     parser.add_argument('--batch_size', type=int, default=200, help="batch size for training")
     parser.add_argument('--superpixels', type=int, default=800, help="number of superpixels")
@@ -171,17 +168,17 @@ def get_args():
     # parser.add_argument('--dataset', type=str, default='comma', help="which loader to use",
     #                     choices=['comma', 'udacity'])
     parser.add_argument('--learning_rate', type=float, default=1e-3, help="learning rate for the optimizer")
-    parser.add_argument('--show_errors',
-                        default=False,
-                        action='store_true',
-                        help="show all errors from the loader")
+    parser.add_argument('--show_errors', default=False, action='store_true', help="show all errors from the loader")
     parser.add_argument('--disable_clearml_logger',
                         default=False,
                         action='store_true',
                         help="disable logging to clearml server")
-    parser.add_argument('--config_file',
-                        type=str,
-                        help='path to a json files containing further configurations for this script. Good for model-specific configurations')
+    parser.add_argument(
+        '--config_file',
+        type=str,
+        help=
+        'path to a json files containing further configurations for this script. Good for model-specific configurations'
+    )
 
     return parser.parse_args()
 
@@ -211,8 +208,4 @@ if __name__ == "__main__":
 
     logging.info(f"Using device {args.device}")
 
-    train_video_recognition(
-        **vars(args),
-        output_dirs=output_dirs,
-        args=args
-    )
+    train_video_recognition(**vars(args), output_dirs=output_dirs, args=args)

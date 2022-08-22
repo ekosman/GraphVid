@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch_geometric.data import Data
-from torch_geometric.utils import remove_isolated_nodes, subgraph
+from torch_geometric.utils import subgraph
 
 from transforms.create_superpixels_flow_graph import SPATIAL
 

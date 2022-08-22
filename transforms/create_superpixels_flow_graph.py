@@ -1,21 +1,15 @@
-import cProfile
-import sys
 import time
 from itertools import product
-from os import path
-from enum import Enum
 
-import matplotlib.pyplot as plt
 import torch
 from torch import tensor
 
-import cv2
+# import cv2
 import numpy as np
 from fast_slic.avx2 import SlicAvx2
-from networkx import DiGraph
-from numba import jit, njit, prange
+from numba import jit
 from numpy.linalg import norm
-from numpy import unique, stack, asarray, concatenate
+from numpy import unique, stack, asarray
 from scipy.spatial.distance import cdist
 from torch_geometric.data import Data
 from torch_geometric.utils import from_networkx
@@ -288,30 +282,19 @@ def create_superpixels_flow_graph(clip, n_segments, compactness, node_features_m
         segments = all_segments[i_frame]
         idxs = unique(segments)
         if len(idxs) < 2:
-            # plt.Figure()
-            # plt.imshow(frame)
-            # plt.show()
             layer_nodes[i_frame] = None
             continue
 
         edges = get_adjacents_v2(segments)
-        # edges = get_adjacents_v2(segments)
         superpixels_idxs = indices_for_segments(segments, len(idxs))
         node_attrs_coordinates = [get_attr_for_segment_v2(frame,
                                                           *superpixels_idxs[idx],
                                                           method='mean_coordinates_and_mean_color')
                                   for idx in idxs]
 
-        # nodes = [((i_frame, idx), {'x': node_attrs_coordinates[idx][0]}) for idx in idxs]
-        # parent_graph.add_nodes_from(nodes)
-
         layer_edges[i_frame] = tensor([[u, v] for u, v in edges])
         layer_edge_attrs[i_frame] = tensor(
             [norm(node_attrs_coordinates[u][1] - node_attrs_coordinates[v][1], ord=2) for u, v in edges])
-        # for u, v in edges:
-        #     d = norm(node_attrs_coordinates[u][1] - node_attrs_coordinates[v][1], ord=2)
-        #     parent_graph.add_edge(u, v, edge_attr=d)
-        #     parent_graph.add_edge(v, u, edge_attr=d)
 
         layer_nodes[i_frame] = node_attrs_coordinates
 
@@ -375,37 +358,3 @@ class NetworkxToGeometric:
         g = from_networkx(g)
         print(f"TIME: {time.time() - start_time}")
         return g
-
-
-if __name__ == '__main__':
-    clip_length = 16
-    cap = cv2.VideoCapture(
-        path.join(r'/media/eitank/disk2T/Datasets/kinetics-downloader/dataset/train/arranging_flowers/0a8l_Pou_C8.mp4'))
-
-    # Read until video is completed
-    clip = []
-    while cap.isOpened():
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-        frame = cv2.resize(frame, fx=0.5, fy=0.5, dsize=None)
-        clip.append(frame)
-        if len(clip) == clip_length:
-            profiler = cProfile.Profile()
-            profiler.enable()
-            X = create_superpixels_flow_graph(clip)
-            profiler.disable()
-            profiler.print_stats(sort='tottime')
-            X = from_networkx(X)
-            print(f"Size of clip: {sys.getsizeof(clip)}")
-            print(f"Size of graph: {sys.getsizeof(X)}")
-            clip = []
-
-        # Press Q on keyboard to  exit
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-
-    # When everything done, release the video capture object
-    cap.release()
-
-    # Closes all the frames
-    cv2.destroyAllWindows()
