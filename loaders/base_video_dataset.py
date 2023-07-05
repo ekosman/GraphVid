@@ -79,9 +79,6 @@ def size(tensor):
     return tensor.element_size() * tensor.nelement()
 
 
-i = 1
-
-
 class CachingVideoDataset(BaseVideoDataset, ABC):
 
     def __init__(self, cache_root=None, return_name=False, **kwargs):
