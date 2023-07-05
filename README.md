@@ -7,7 +7,7 @@ This repository includes partial documentations for the code for reproducing the
 
 First, download the kinetics-400 dataset using the code from the following repository (instructions are included):
 
-https://anonymous.4open.science/r/KineticsDownloader-FF74/
+[https://anonymous.4open.science/r/KineticsDownloader-FF74/](https://github.com/ekosman/KineticsDownloader)
 
 Next, use the downloaded dataset to train your model by:
 
