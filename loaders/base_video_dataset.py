@@ -105,8 +105,6 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         return video_name, clip_idx, video_path
 
     def __getitem__(self, item):
-        global i
-        item = 1
         video_name, clip_idx, video_path = self.get_item_properties(item)
         video_idx = self.path_2_idx[video_path]
         if self.cache_root is not None:
@@ -131,9 +129,6 @@ class CachingVideoDataset(BaseVideoDataset, ABC):
         data = compress_data(data), label
         if self.cache_root is not None:
             torch.save(data, dump_path)
-
-        # print(i)
-        # i += 1
 
         data, label = data
         data = uncompress_data(data), label
